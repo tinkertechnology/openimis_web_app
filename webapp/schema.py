@@ -4,7 +4,7 @@ import graphene
 from insuree import models as insuree_models
 from claim import models as claim_models
 from graphene_django import DjangoObjectType
-from .models import InsureeAuth
+from .models import InsureeAuth, Notice
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
@@ -55,12 +55,18 @@ class InsureeProfileGQLType(DjangoObjectType):
         # return value_obj.insuree.all()
         return claim_models.Claim.objects.filter(insuree=value_obj)
 
+class NoticeGQLType(DjangoObjectType):
+    class Meta:
+        model = Notice
+        interfaces = (graphene.relay.Node,)
+        fields= ['id', 'title', 'description', 'created_at']
 
 
 class Query(graphene.ObjectType):
     password = graphene.String()
     insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(), dob=graphene.Date())
     insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
+    notices = graphene.List(NoticeGQLType)
 
     def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob,  **kwargs):
         auth=False
@@ -87,6 +93,8 @@ class Query(graphene.ObjectType):
         # if insuree_obj:
         #     return InsureeVerifyGQLType(insuree_obj)
         # return ''
+    def resolve_notices(self, info):
+        return Notice.objects.filter(active=True)
 
     def generate_token(self):
         token = uuid.uuid4().hex[:6].upper()
@@ -94,14 +102,11 @@ class Query(graphene.ObjectType):
 
 
 
-
 class Mutation(graphene.ObjectType):
-    
     create_notice = CreateNoticeMutation.Field()
-    # update_claim = UpdateClaimMutation.Field()
-    # create_claim_attachment = CreateAttachmentMutation.Field()
-    # update_claim_attachment = UpdateAttachmentMutation.Field()
-    # delete_claim_attachment = DeleteAttachmentMutation.Field()
+    update_notice = UpdateNoticeMutation.Field()
+    delete_notice = DeleteNoticeMutation.Field()
+    
 
 
 

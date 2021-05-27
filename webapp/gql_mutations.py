@@ -6,6 +6,7 @@ import base64
 import graphene
 import graphene_django_optimizer
 from django.db.models import OuterRef, Avg, Subquery, Q
+from graphql import GraphQLError
 
 # from .apps import ClaimConfig
 # from claim.validations import validate_claim, get_claim_category, validate_assign_prod_to_claimitems_and_services, \
@@ -28,36 +29,64 @@ from django.db.models import OuterRef, Avg, Subquery, Q
 from .models import Notice
 from graphene_django import DjangoObjectType
 
-# class NoticeInputType(graphene.InputObjectType):
-#     id = graphene.Int(required=False)
-#     title = graphene.String(required=True)
-#     description = graphene.String(required=True)
+class NoticeInput(graphene.InputObjectType):
+    # id = graphene.Int(required=False)
+    title = graphene.String(required=True)
+    description = graphene.String(required=True)
 
 class NoticeType(DjangoObjectType):
     class Meta:
         model = Notice
         fields = ['title', 'description']
+        
+
 
 class CreateNoticeMutation(graphene.Mutation):
     # _mutation_module = "webapp"
     # _mutation_class = "CreateNoticeMutation"
-
-    # class Input(NoticeInputType):
-    #     pass
-    
     class Arguments:
-        id = graphene.Int(required=False)
+        # notice_input = NoticeInput(required=True)
+        # print(notice_input.__dict__)
         title = graphene.String(required=True)
         description = graphene.String(required=True)
+
+    notice = graphene.Field(NoticeType)
+   
+    @classmethod
+    def mutate(self,info,id, **kwargs):
+        print(kwargs)
+        notice = Notice.objects.create(title=kwargs['title'], description=kwargs['description'])
+        return CreateNoticeMutation(notice=notice)
+
+class UpdateNoticeMutation(graphene.Mutation):
+    class Arguments:
+        id = graphene.Int(required=True)
+        title = graphene.String(required=False,)
+        description = graphene.String(required=False)
     notice = graphene.Field(NoticeType)
     @classmethod
-    def mutate(self,info, title,description):
-        print(data)
-        notice = Notice()
-        notice.title = title
-        notice.description = description
-        notice.save()
-        return CreateNoticeMutation(notice=notice)
+    def mutate(self, info,cls, **kwargs):
+        try:
+            notice = Notice.objects.filter(pk=kwargs['id']).first()
+            notice.update(title=kwargs['title'], description=kwargs['description'])
+            return UpdateNoticeMutation(notice=notice)
+        except:
+            return GraphQLError('The notice you are updating might not exist anymore')
+
+class DeleteNoticeMutation(graphene.Mutation):
+    class Arguments:
+        id = graphene.Int(required=True)
+    
+    notice = graphene.Field(NoticeType)
+    @classmethod
+    def mutate(self, info, cls, id):
+        try:
+            notice = Notice.objects.filter(pk=id).first()
+            notice.active = False #soft_delete
+            notice.save()
+            return DeleteNoticeMutation(notice=notice)
+        except:
+            return GraphQLError('The notice you are deleting might not exist anymore')            
 
 
 # class ClaimItemInputType(InputObjectType):
