@@ -10,6 +10,12 @@ from .models import InsureeAuth, Notice
 from .gql_mutations import *  # lgtm [py/polluting-import]
 
 
+class InsureeHolderGQLType(DjangoObjectType):
+    class Meta:
+        model = insuree_models.Insuree
+        fields = '__all__'
+
+
 class InsureePolicyType(DjangoObjectType):
     class Meta:
         model = insuree_models.InsureePolicy
@@ -24,9 +30,10 @@ class InsureeClaimGQLType(DjangoObjectType):
 
 
 class InsureeAuthGQLType(DjangoObjectType):
+    insuree = graphene.Field(InsureeHolderGQLType)
     class Meta:
         model = InsureeAuth
-        fields = ['id', 'token']
+        fields = ['id', 'token', 'insuree']
 
 # class InsureeImageGQLType(DjangoObjectType):
 #     class Meta:
@@ -61,10 +68,12 @@ class NoticeGQLType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields= ['id', 'title', 'description', 'created_at']
 
+from django.core.exceptions import PermissionDenied
 
 class Query(graphene.ObjectType):
     password = graphene.String()
     insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(), dob=graphene.Date())
+    insuree_auth_otp = graphene.Field(InsureeAuthGQLType, chfid=graphene.String(), otp=graphene.String())
     insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
     notices = graphene.List(NoticeGQLType)
 
@@ -78,15 +87,24 @@ class Query(graphene.ObjectType):
                 if insuree_obj.family==familty_insuree_obj.family:
                     auth=True
         if auth==True:
-           insuree_auth_obj = InsureeAuth.objects.filter(insuree=insuree_obj).first()
-           if not insuree_auth_obj:
-               insuree_auth_obj = InsureeAuth()
-               insuree_auth_obj.insuree = insuree_obj
-               insuree_auth_obj.save()
-               insuree_auth_obj.token = uuid.uuid4().hex[:6].upper() + str(insuree_auth_obj.id) #todo yeslai lamo banaune                    
-               insuree_auth_obj.save()
+            insuree_auth_obj = InsureeAuth.objects.filter(insuree=insuree_obj).first()
+            if not insuree_auth_obj:
+                insuree_auth_obj = InsureeAuth()
+                insuree_auth_obj.insuree = insuree_obj
+                insuree_auth_obj.save()
+                insuree_auth_obj.token = uuid.uuid4().hex[:6].upper() + str(insuree_auth_obj.id) #todo yeslai lamo banaune
+            insuree_auth_obj.otp = uuid.uuid4().hex[:4]
+            insuree_auth_obj.save()
+        if insuree_auth_obj:
+            insuree_auth_obj.token = '' #user lai login garda otp verify agadi token nadine
         return insuree_auth_obj
-    
+
+    def resolve_insuree_auth_otp(self, info, chfid, otp):
+        checkotp = InsureeAuth.objects.filter(otp=otp).filter(insuree__chf_id=chfid).first()
+        if checkotp:
+            return checkotp
+        return None
+
     def resolve_insuree_profile(self, info, insureeID,**kwargs):
         return insuree_models.Insuree.objects.get(id=insureeID)
 

@@ -7,6 +7,7 @@ class InsureeAuth(models.Model):
     insuree = models.OneToOneField(insuree_models.Insuree, on_delete=models.DO_NOTHING,
                                 db_column='InsureeID', blank=True, null=True, related_name="verified_insurees")
     token = models.CharField(max_length=300)
+    otp = models.CharField(max_length=10, null=True, blank=True)
     password = models.CharField(max_length=50)
 
     def __str__(self):
@@ -14,6 +15,7 @@ class InsureeAuth(models.Model):
         if self.insuree.other_names:
             name= self.insuree.other_names
         return name
+
 
 
 class Notice(models.Model):
