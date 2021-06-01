@@ -4,7 +4,7 @@ import graphene
 from insuree import models as insuree_models
 from claim import models as claim_models
 from graphene_django import DjangoObjectType
-from .models import InsureeAuth, Notice
+from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
@@ -68,6 +68,12 @@ class NoticeGQLType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields= ['id', 'title', 'description', 'created_at']
 
+class HealthFacilityCoordinateGQLType(DjangoObjectType):
+    class Meta:
+        model = HealthFacilityCoordinate
+        interfaces = (graphene.relay.Node,)
+        fields= '__all__'
+
 from django.core.exceptions import PermissionDenied
 
 class Query(graphene.ObjectType):
@@ -76,6 +82,7 @@ class Query(graphene.ObjectType):
     insuree_auth_otp = graphene.Field(InsureeAuthGQLType, chfid=graphene.String(), otp=graphene.String())
     insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
     notices = graphene.List(NoticeGQLType)
+    health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
 
     def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob,  **kwargs):
         auth=False
@@ -117,7 +124,10 @@ class Query(graphene.ObjectType):
     def generate_token(self):
         token = uuid.uuid4().hex[:6].upper()
         return token
-
+    
+    def resolve_health_facility_coordinate(self, info, inputLatitude, inputLongitude):
+        return HealthFacilityCoordinate.objects.all()
+        pass
 
 
 class Mutation(graphene.ObjectType):
