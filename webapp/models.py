@@ -1,6 +1,8 @@
 from django.db import models
+import uuid
 from insuree.apps import InsureeConfig
 from insuree import models as insuree_models
+from location import models as location_models
 
 # Create your models here.
 class InsureeAuth(models.Model):
@@ -16,8 +18,6 @@ class InsureeAuth(models.Model):
             name= self.insuree.other_names
         return name
 
-
-
 class Notice(models.Model):
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=500)
@@ -28,3 +28,13 @@ class Notice(models.Model):
     def __str__(self):
         return self.title
 
+class HealthFacilityCoordinate(models.Model):
+    id = models.AutoField(db_column='hfcId', primary_key=True)
+    uuid = models.CharField(db_column='hfcUUID',
+                            max_length=36, default=uuid.uuid4, unique=True)
+    health_facility = models.ForeignKey(
+        location_models.HealthFacility, models.DO_NOTHING, db_column='HFID')
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
+    
+    
