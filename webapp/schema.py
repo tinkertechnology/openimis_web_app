@@ -49,8 +49,9 @@ class InsureeProfileGQLType(DjangoObjectType):
     class Meta:
         model = insuree_models.Insuree
         interfaces = (graphene.relay.Node,)
-        fields = ['id', 'insuree_policies', 'insuree_claim']
-    
+        fields = ['id','chf_id', 'insuree_policies', 'insuree_claim']
+
+
     insuree_claim = graphene.List(InsureeClaimGQLType)
     insuree_policies = graphene.List(InsureePolicyType)
     def resolve_photos(value_obj,info):
@@ -61,6 +62,8 @@ class InsureeProfileGQLType(DjangoObjectType):
     def resolve_insuree_claim(value_obj, info):
         # return value_obj.insuree.all()
         return claim_models.Claim.objects.filter(insuree=value_obj)
+    
+
 
 class NoticeGQLType(DjangoObjectType):
     class Meta:
@@ -75,7 +78,9 @@ class Query(graphene.ObjectType):
     insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(), dob=graphene.Date())
     insuree_auth_otp = graphene.Field(InsureeAuthGQLType, chfid=graphene.String(), otp=graphene.String())
     insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
+    insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
     notices = graphene.List(NoticeGQLType)
+
 
     def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob,  **kwargs):
         auth=False
@@ -99,14 +104,20 @@ class Query(graphene.ObjectType):
             insuree_auth_obj.token = '' #user lai login garda otp verify agadi token nadine
         return insuree_auth_obj
 
+    def resolve_insuree_claim(self, info, claimId):
+        return claim_models.Claim.objects.filter(id=claimId)
+
+
+
+
     def resolve_insuree_auth_otp(self, info, chfid, otp):
         checkotp = InsureeAuth.objects.filter(otp=otp).filter(insuree__chf_id=chfid).first()
         if checkotp:
             return checkotp
         return None
 
-    def resolve_insuree_profile(self, info, insureeID,**kwargs):
-        return insuree_models.Insuree.objects.get(id=insureeID)
+    def resolve_insuree_profile(self, info, insureeCHFID,**kwargs):
+        return insuree_models.Insuree.objects.get(id=insureeCHFID)
 
         # if insuree_obj:
         #     return InsureeVerifyGQLType(insuree_obj)
