@@ -9,6 +9,35 @@ from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 # from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
 
+from django.db.models.expressions import RawSQL
+
+def get_qs_nearby_hfcoord(latitude, longitude, max_distance=None):
+    """
+    Return objects sorted by distance to specified coordinates
+    which distance is less than max_distance given in kilometers
+    """
+    # Great circle distance formula
+    gcd_formula = """
+	    6371 * 
+	        acos(
+	            cos( radians( %s ) ) * cos( radians( latitude ) ) * cos ( radians(longitude) - radians(%s) ) +
+	            sin( radians(%s) ) * sin( radians( latitude ) )
+	        )
+    """ % (latitude, longitude, latitude) 
+
+    distance_raw_sql = RawSQL(
+        gcd_formula,
+        ()
+    )
+    qs = HealthFacilityCoordinate.objects.all() \
+    .annotate(distance=distance_raw_sql)\
+    .order_by('distance')
+    if max_distance is not None:
+    	qs = qs.filter( distance__lt= float(max_distance) )
+    qs = qs.exclude(latitude__isnull=True).exclude(longitude__isnull=True)
+
+    #print(qs.query) #print(qs.all())
+    return qs
 
 class InsureeHolderGQLType(DjangoObjectType):
     class Meta:
@@ -72,6 +101,7 @@ class NoticeGQLType(DjangoObjectType):
         fields= ['id', 'title', 'description', 'created_at']
 
 class HealthFacilityCoordinateGQLType(DjangoObjectType):
+    distance=graphene.Float()
     class Meta:
         model = HealthFacilityCoordinate
         interfaces = (graphene.relay.Node,)
@@ -137,7 +167,8 @@ class Query(graphene.ObjectType):
         return token
     
     def resolve_health_facility_coordinate(self, info, inputLatitude, inputLongitude):
-        return HealthFacilityCoordinate.objects.all()
+        #return HealthFacilityCoordinate.objects.all()
+        return get_qs_nearby_hfcoord(inputLatitude, inputLongitude, None)
         pass
 
 
