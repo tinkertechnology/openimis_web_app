@@ -37,4 +37,10 @@ class HealthFacilityCoordinate(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     
-    
+
+
+class VoucherPayment(models.Model):
+    insuree = models.ForeignKey(insuree_models.Insuree, on_delete=models.DO_NOTHING,
+                                db_column='InsureeID', blank=True, null=True, related_name="voucher_payment_insurees")
+    voucher = models.FileField(upload_to="insuree_voucher")
+    is_entry = models.BooleanField(default=False)

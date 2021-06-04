@@ -26,8 +26,35 @@ from graphql import GraphQLError
 # from product.models import ProductItemOrService
 
 # logger = logging.getLogger(__name__)
-from .models import Notice
+from .models import Notice, VoucherPayment
 from graphene_django import DjangoObjectType
+
+
+class VoucherPaymentType(DjangoObjectType):
+    class Meta:
+        model = VoucherPayment
+        fields = ['voucher']
+
+class CreateVoucherPaymentMutation(graphene.Mutation):
+    # _mutation_module = "webapp"
+    # _mutation_class = "CreateNoticeMutation"
+    class Arguments(object):
+        
+        file = graphene.List(graphene.String)
+    ok = graphene.Boolean()
+    # @classmethod
+    def mutate (self, info, file):
+        files = info.context.FILES
+        print(files)
+
+        VoucherPayment.objects.create(voucher=files.get('file'))
+        return CreateVoucherPaymentMutation(ok=True)
+        # img = info.context.files[file].read()
+    
+
+
+
+
 
 class NoticeInput(graphene.InputObjectType):
     # id = graphene.Int(required=False)

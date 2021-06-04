@@ -1,6 +1,7 @@
 import django
 import uuid 
 import graphene
+from datetime import timedelta, date
 from insuree import models as insuree_models
 from claim import models as claim_models
 from graphene_django import DjangoObjectType
@@ -49,11 +50,13 @@ class InsureeProfileGQLType(DjangoObjectType):
     class Meta:
         model = insuree_models.Insuree
         interfaces = (graphene.relay.Node,)
-        fields = ['id','chf_id', 'insuree_policies', 'insuree_claim']
+        fields = ['id','chf_id', 'other_names', 'last_name', 'insuree_policies', 'insuree_claim', 'recent_policy', 'remaining_days']
 
 
     insuree_claim = graphene.List(InsureeClaimGQLType)
     insuree_policies = graphene.List(InsureePolicyType)
+    recent_policy = graphene.Field(InsureePolicyType)
+    remaining_days = graphene.String()
     def resolve_photos(value_obj,info):
         return value_obj.photos.all
     
@@ -63,6 +66,14 @@ class InsureeProfileGQLType(DjangoObjectType):
         # return value_obj.insuree.all()
         return claim_models.Claim.objects.filter(insuree=value_obj)
     
+    def resolve_recent_policy(value_obj, info):
+        latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
+        return latest_policy
+    
+    def resolve_remaining_days(value_obj, info):
+        latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
+        remaining_days = (latest_policy.expiry_date-date.today()).days
+        return remaining_days
 
 
 class NoticeGQLType(DjangoObjectType):
@@ -145,6 +156,8 @@ class Mutation(graphene.ObjectType):
     create_notice = CreateNoticeMutation.Field()
     update_notice = UpdateNoticeMutation.Field()
     delete_notice = DeleteNoticeMutation.Field()
+    create_voucher_payment = CreateVoucherPaymentMutation.Field()
+
     
 
 
