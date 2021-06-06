@@ -4,6 +4,7 @@ import graphene
 from datetime import timedelta, date
 from insuree import models as insuree_models
 from claim import models as claim_models
+from policy import models as policy_models
 from graphene_django import DjangoObjectType
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 # We do need all queries and mutations in the namespace here.
@@ -45,6 +46,10 @@ class InsureeHolderGQLType(DjangoObjectType):
         model = insuree_models.Insuree
         fields = '__all__'
 
+class PolicyType(DjangoObjectType):
+    class Meta:
+        model = policy_models.Policy
+        fields = '__all__'
 
 class InsureePolicyType(DjangoObjectType):
     class Meta:
@@ -79,12 +84,15 @@ class InsureeProfileGQLType(DjangoObjectType):
     class Meta:
         model = insuree_models.Insuree
         interfaces = (graphene.relay.Node,)
-        fields = ['id','chf_id', 'other_names', 'last_name', 'insuree_policies', 'insuree_claim', 'recent_policy', 'remaining_days']
+        fields = ['id','chf_id', 'other_names', 'last_name', 'insuree_policies', 
+                'insuree_claim', 'recent_policy', 'remaining_days', 'family_policy']
 
 
     insuree_claim = graphene.List(InsureeClaimGQLType)
     insuree_policies = graphene.List(InsureePolicyType)
     recent_policy = graphene.Field(InsureePolicyType)
+    family_policy = graphene.Field(InsureePolicyType)
+    insuree_family_policies = graphene.Field(PolicyType)
     remaining_days = graphene.String()
     def resolve_photos(value_obj,info):
         return value_obj.photos.all
@@ -98,12 +106,17 @@ class InsureeProfileGQLType(DjangoObjectType):
     def resolve_recent_policy(value_obj, info):
         latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
         return latest_policy
-    
+    def resolve_family_policy(value_obj, info):
+        insuree_policy_obj = insuree_models.InsureePolicy.objects.filter(insuree=value_obj)
+        policy_obj = insuree_policy_obj.policy
+        return policy_obj
+
+
     def resolve_remaining_days(value_obj, info):
         latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
         remaining_days = (latest_policy.expiry_date-date.today()).days
         return remaining_days
-
+    
 
 class NoticeGQLType(DjangoObjectType):
     class Meta:
@@ -127,6 +140,7 @@ class Query(graphene.ObjectType):
     insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
     insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
     notices = graphene.List(NoticeGQLType)
+    insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
 
 
@@ -151,6 +165,10 @@ class Query(graphene.ObjectType):
         if insuree_auth_obj:
             insuree_auth_obj.token = '' #user lai login garda otp verify agadi token nadine
         return insuree_auth_obj
+    
+    def resolve_insuree_policy(self, info , insureeCHFID):
+        policy_obj = policy_models.Policy.filter()
+
 
     def resolve_insuree_claim(self, info, claimId):
         return claim_models.Claim.objects.filter(id=claimId)
