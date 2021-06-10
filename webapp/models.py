@@ -1,5 +1,6 @@
 from django.db import models
 import uuid
+from datetime import datetime
 from insuree.apps import InsureeConfig
 from insuree import models as insuree_models
 from location import models as location_models
@@ -37,10 +38,14 @@ class HealthFacilityCoordinate(models.Model):
     latitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, blank=True, null=True)
     
-
+def generate_voucher_number():
+    return datetime.now().strftime('%Y%m%d%H%M%S')
 
 class VoucherPayment(models.Model):
     insuree = models.ForeignKey(insuree_models.Insuree, on_delete=models.DO_NOTHING,
                                 db_column='InsureeID', blank=True, null=True, related_name="voucher_payment_insurees")
     voucher = models.FileField(upload_to="insuree_voucher")
+    vocher_id = models.CharField(max_length=50, default=generate_voucher_number()) #this will be always unique
     is_entry = models.BooleanField(default=False)
+    
+
