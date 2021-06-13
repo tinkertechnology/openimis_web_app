@@ -6,6 +6,8 @@ from insuree import models as insuree_models
 from claim import models as claim_models
 from policy import models as policy_models
 from graphene_django import DjangoObjectType
+from graphene import relay, ObjectType, Connection, Int
+from graphene_django.filter import DjangoFilterConnectionField
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
@@ -117,12 +119,25 @@ class InsureeProfileGQLType(DjangoObjectType):
         remaining_days = (latest_policy.expiry_date-date.today()).days
         return remaining_days
     
+class ExtendedConnection(Connection):
+    class Meta:
+        abstract = True
+
+    total_count = Int()
+    edge_count = Int()
+
+    def resolve_total_count(root, info, **kwargs):
+        return root.length
+    def resolve_edge_count(root, info, **kwargs):
+        return len(root.edges)
 
 class NoticeGQLType(DjangoObjectType):
     class Meta:
         model = Notice
         interfaces = (graphene.relay.Node,)
-        fields= ['id', 'title', 'description', 'created_at']
+        filter_fields= ['title', 'description']
+        connection_class = ExtendedConnection
+
 
 class HealthFacilityCoordinateGQLType(DjangoObjectType):
     distance=graphene.Float()
@@ -131,7 +146,8 @@ class HealthFacilityCoordinateGQLType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields= '__all__'
 
-from django.core.exceptions import PermissionDenied
+
+
 
 class Query(graphene.ObjectType):
     password = graphene.String()
@@ -139,7 +155,10 @@ class Query(graphene.ObjectType):
     insuree_auth_otp = graphene.Field(InsureeAuthGQLType, chfid=graphene.String(), otp=graphene.String())
     insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
     insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
-    notices = graphene.List(NoticeGQLType)
+    
+    notice = relay.Node.Field(NoticeGQLType)
+    notices = DjangoFilterConnectionField(NoticeGQLType)
+    
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
 
