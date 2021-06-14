@@ -7,6 +7,8 @@ import graphene
 import graphene_django_optimizer
 from django.db.models import OuterRef, Avg, Subquery, Q
 from graphql import GraphQLError
+from core.schema import OpenIMISMutation
+# from graphene import relay, ObjectType
 
 # from .apps import ClaimConfig
 # from claim.validations import validate_claim, get_claim_category, validate_assign_prod_to_claimitems_and_services, \
@@ -68,22 +70,45 @@ class NoticeType(DjangoObjectType):
         
 
 
-class CreateNoticeMutation(graphene.Mutation):
+# class CreateNoticeMutation(graphene.Mutation):
+#     # _mutation_module = "webapp"
+#     # _mutation_class = "CreateNoticeMutation"
+#     class Arguments:
+#         # notice_input = NoticeInput(required=True)
+#         # print(notice_input.__dict__)
+#         title = graphene.String(required=True)
+#         description = graphene.String(required=True)
+
+#     notice = graphene.Field(NoticeType)
+   
+#     @classmethod
+#     def mutate(self,info,id, **kwargs):
+#         print(kwargs)
+#         notice = Notice.objects.create(title=kwargs['title'], description=kwargs['description'])
+#         return CreateNoticeMutation(notice=notice)
+
+class CreateNoticeMutation(OpenIMISMutation):#graphene.relay.ClientIDMutation):
     # _mutation_module = "webapp"
     # _mutation_class = "CreateNoticeMutation"
-    class Arguments:
-        # notice_input = NoticeInput(required=True)
-        # print(notice_input.__dict__)
+    class Input:
         title = graphene.String(required=True)
         description = graphene.String(required=True)
+        client_mutation_id = graphene.String()
+        client_mutation_label = graphene.String()
 
     notice = graphene.Field(NoticeType)
    
     @classmethod
-    def mutate(self,info,id, **kwargs):
-        print(kwargs)
-        notice = Notice.objects.create(title=kwargs['title'], description=kwargs['description'])
+    def mutate_and_get_payload(cls, root, info, **input):
+        data = input
+        if "client_mutation_id" in data:
+            data.pop('client_mutation_id')
+        if "client_mutation_label" in data:
+            data.pop('client_mutation_label')
+        print(input)
+        notice = Notice.objects.create(title=input['title'], description=input['description'])
         return CreateNoticeMutation(notice=notice)
+
 
 class UpdateNoticeMutation(graphene.Mutation):
     class Arguments:
