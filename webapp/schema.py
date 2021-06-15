@@ -13,7 +13,7 @@ from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 # from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
 
-from django.db.models.expressions import RawSQL
+from django.db.models.expressions import OrderBy, RawSQL
 
 def get_qs_nearby_hfcoord(latitude, longitude, max_distance=None):
     """
@@ -135,7 +135,13 @@ class NoticeGQLType(DjangoObjectType):
     class Meta:
         model = Notice
         interfaces = (graphene.relay.Node,)
-        filter_fields= ['title', 'description']
+        filter_fields= {
+            "title": ['exact', 'icontains', 'istartswith'],
+            "description": ['exact', 'icontains', 'istartswith'],
+            "active": ['exact'],
+
+        }
+
         connection_class = ExtendedConnection
 
 
@@ -157,7 +163,7 @@ class Query(graphene.ObjectType):
     insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
     
     notice = relay.Node.Field(NoticeGQLType)
-    notices = DjangoFilterConnectionField(NoticeGQLType)
+    notices = DjangoFilterConnectionField(NoticeGQLType, orderBy=graphene.List(of_type=graphene.String))
     
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
@@ -207,8 +213,9 @@ class Query(graphene.ObjectType):
         # if insuree_obj:
         #     return InsureeVerifyGQLType(insuree_obj)
         # return ''
-    def resolve_notices(self, info):
-        return Notice.objects.filter(active=True)
+    def resolve_notices(self, info, **kwargs): 
+        orderBy = kwargs.get('orderBy', None)
+        return Notice.objects.order_by(*orderBy)
 
     def generate_token(self):
         token = uuid.uuid4().hex[:6].upper()
