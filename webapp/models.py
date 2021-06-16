@@ -47,5 +47,7 @@ class VoucherPayment(models.Model):
     voucher = models.FileField(upload_to="insuree_voucher")
     vocher_id = models.CharField(max_length=50, default=generate_voucher_number()) #this will be always unique
     is_entry = models.BooleanField(default=False)
+    created_at =  models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
+    updated_at =   models.DateTimeField(verbose_name='date updated', null=True, auto_now_add=True)    
     
 

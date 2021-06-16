@@ -145,6 +145,30 @@ class NoticeGQLType(DjangoObjectType):
         connection_class = ExtendedConnection
 
 
+class VoucherPaymentGQLType(DjangoObjectType):
+    voucher_image = graphene.String()
+    class Meta:
+        model = VoucherPayment
+        interfaces = (graphene.relay.Node,)
+        fields = ["voucher", "voucher_id", "insuree"]
+        filter_fields= {
+            # "insuree": ['exact', 'icontains', 'istartswith'],
+            # "voucher_id": ['exact', 'icontains', 'istartswith'],
+           
+
+        }
+        @classmethod
+        def resolve_voucher_image(self,info):
+            # print('value_obj',value_obj)
+            if self.voucher:
+                self.voucher = info.context.build_absolute_uri(self.voucher.url)
+            return self.voucher
+
+
+        connection_class = ExtendedConnection
+
+
+
 class HealthFacilityCoordinateGQLType(DjangoObjectType):
     distance=graphene.Float()
     class Meta:
@@ -164,6 +188,8 @@ class Query(graphene.ObjectType):
     
     notice = relay.Node.Field(NoticeGQLType)
     notices = DjangoFilterConnectionField(NoticeGQLType, orderBy=graphene.List(of_type=graphene.String))
+    voucher_payments = DjangoFilterConnectionField(VoucherPaymentGQLType, orderBy=graphene.List(of_type=graphene.String), image_url=graphene.String())
+
     
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
@@ -216,6 +242,10 @@ class Query(graphene.ObjectType):
     def resolve_notices(self, info, **kwargs): 
         orderBy = kwargs.get('orderBy', None)
         return Notice.objects.order_by(*orderBy)
+
+    def resolve_voucher_payments(self, info, **kwargs): 
+        orderBy = kwargs.get('orderBy', None)
+        return VoucherPayment.objects.order_by(*orderBy)
 
     def generate_token(self):
         token = uuid.uuid4().hex[:6].upper()
