@@ -215,6 +215,8 @@ class Query(graphene.ObjectType):
         # return ''
     def resolve_notices(self, info, **kwargs): 
         orderBy = kwargs.get('orderBy', None)
+        if not orderBy:
+            return Notice.objects.order_by("-created_at")
         return Notice.objects.order_by(*orderBy)
 
     def generate_token(self):
