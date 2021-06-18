@@ -16,6 +16,23 @@ from graphene_django.registry import Registry
 from .gql_mutations import *  # lgtm [py/polluting-import]
 
 from django.db.models.expressions import OrderBy, RawSQL
+from django.core.exceptions import PermissionDenied
+
+def gql_auth_insuree(function):
+    def wrap(*args,**kwargs):
+        if args:
+            if args[1]: #info of graphql resolve
+                token=args[1].context.META.get('HTTP_INSUREE_TOKEN')
+                print(token) #-H 'Insuree-Token: F008CA1' \
+                if token:
+                    insuree=InsureeAuth.objects.filter(token=token).first()
+                    if insuree:
+                        return function( *args, **kwargs)
+        raise PermissionDenied("No insuree token")
+
+    wrap.__doc__ = function.__doc__
+    wrap.__name__ = function.__name__
+    return wrap
 
 def get_qs_nearby_hfcoord(latitude, longitude, max_distance=None):
     """
@@ -266,6 +283,7 @@ class Query(graphene.ObjectType):
         token = uuid.uuid4().hex[:6].upper()
         return token
     
+    @gql_auth_insuree
     def resolve_health_facility_coordinate(self, info, inputLatitude, inputLongitude):
         #return HealthFacilityCoordinate.objects.all()
         return get_qs_nearby_hfcoord(inputLatitude, inputLongitude, None)
@@ -284,3 +302,4 @@ class Mutation(graphene.ObjectType):
 
 
 
+#schema = graphene.Schema(query=Query, mutation=Mutation)
