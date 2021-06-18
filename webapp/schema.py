@@ -18,10 +18,10 @@ from .gql_mutations import *  # lgtm [py/polluting-import]
 from django.db.models.expressions import OrderBy, RawSQL
 from django.core.exceptions import PermissionDenied
 
-def insuree_login_req(function):
+def gql_auth_insuree(function):
     def wrap(*args,**kwargs):
         if args:
-            if args[1]:
+            if args[1]: #info of graphql resolve
                 token=args[1].context.META.get('HTTP_INSUREE_TOKEN')
                 print(token) #-H 'Insuree-Token: F008CA1' \
                 if token:
@@ -276,7 +276,7 @@ class Query(graphene.ObjectType):
         token = uuid.uuid4().hex[:6].upper()
         return token
     
-    @insuree_login_req
+    @gql_auth_insuree
     def resolve_health_facility_coordinate(self, info, inputLatitude, inputLongitude):
         #return HealthFacilityCoordinate.objects.all()
         return get_qs_nearby_hfcoord(inputLatitude, inputLongitude, None)
