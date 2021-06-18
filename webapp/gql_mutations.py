@@ -31,6 +31,18 @@ from core.schema import OpenIMISMutation
 # logger = logging.getLogger(__name__)
 from .models import Notice, VoucherPayment, Feedback
 from graphene_django import DjangoObjectType
+from graphene import relay, ObjectType, Connection, Int
+class ExtendedConnection(Connection):
+    class Meta:
+        abstract = True
+
+    total_count = Int()
+    edge_count = Int()
+
+    def resolve_total_count(root, info, **kwargs):
+        return root.length
+    def resolve_edge_count(root, info, **kwargs):
+        return len(root.edges)
 
 
 class VoucherPaymentType(DjangoObjectType):
@@ -88,11 +100,18 @@ class NoticeType(DjangoObjectType):
 #         notice = Notice.objects.create(title=kwargs['title'], description=kwargs['description'])
 #         return CreateNoticeMutation(notice=notice)
 
-class FeedbackType(DjangoObjectType):
+
+
+class FeedbackAppGQLType(DjangoObjectType):
     class Meta:
         model = Feedback
-        fields = ["fullname", "email_address", "mobile_number", "queries"]
+        interfaces = (graphene.relay.Node,)
+        filter_fields= {
+            "fullname": ['exact', 'icontains', 'istartswith'],
 
+        }
+
+        connection_class = ExtendedConnection
 
 class CreateFeedbackMutation(graphene.Mutation):
     class Arguments:
@@ -100,7 +119,7 @@ class CreateFeedbackMutation(graphene.Mutation):
         email_address = graphene.String(required=True)
         mobile_number = graphene.String(required=True)
         queries = graphene.String(required=True)
-    feedback= graphene.Field(FeedbackType)
+    feedback= graphene.Field(FeedbackAppGQLType)
 
     @classmethod
     def mutate(cls,root,info, **kwargs):

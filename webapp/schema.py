@@ -126,17 +126,13 @@ class InsureeProfileGQLType(DjangoObjectType):
         remaining_days = (latest_policy.expiry_date-date.today()).days
         return remaining_days
     
-class ExtendedConnection(Connection):
-    class Meta:
-        abstract = True
 
-    total_count = Int()
-    edge_count = Int()
 
-    def resolve_total_count(root, info, **kwargs):
-        return root.length
-    def resolve_edge_count(root, info, **kwargs):
-        return len(root.edges)
+
+
+
+from .gql_mutations import  FeedbackAppGQLType
+
 
 class NoticeGQLType(DjangoObjectType):
     class Meta:
@@ -150,6 +146,8 @@ class NoticeGQLType(DjangoObjectType):
         }
 
         connection_class = ExtendedConnection
+
+
 
 
 class VoucherPaymentGQLType(DjangoObjectType):
@@ -198,6 +196,9 @@ class Query(graphene.ObjectType):
     
     notice = relay.Node.Field(NoticeGQLType)
     notices = DjangoFilterConnectionField(NoticeGQLType, orderBy=graphene.List(of_type=graphene.String))
+    feedback = relay.Node.Field(FeedbackAppGQLType)
+    feedbacks = DjangoFilterConnectionField(FeedbackAppGQLType, orderBy=graphene.List(of_type=graphene.String))
+
     voucher_payments = DjangoFilterConnectionField(VoucherPaymentGQLType, orderBy=graphene.List(of_type=graphene.String), image_url=graphene.String())
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
@@ -250,6 +251,12 @@ class Query(graphene.ObjectType):
         if not orderBy:
             return Notice.objects.order_by("-created_at")
         return Notice.objects.order_by(*orderBy)
+    def resolve_feedbacks(self, info, **kwargs):
+        orderBy = kwargs.get('orderBy', None)
+        if not orderBy:
+            return Feedback.objects.order_by("-created_at")
+        return Feedback.objects.order_by(*orderBy)
+
 
     def resolve_voucher_payments(self, info, **kwargs): 
         orderBy = kwargs.get('orderBy', None)
