@@ -9,6 +9,8 @@ from graphene_django import DjangoObjectType
 from graphene import relay, ObjectType, Connection, Int
 from graphene_django.filter import DjangoFilterConnectionField
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
+from graphene_django.registry import Registry
+
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
@@ -99,6 +101,10 @@ class InsureeAuthGQLType(DjangoObjectType):
 #             self.image = info.context.build_absolute_uri(self.photo.url)
 #         return self.image
 
+
+
+
+
 class InsureeProfileGQLType(DjangoObjectType):
     class Meta:
         model = insuree_models.Insuree
@@ -106,6 +112,7 @@ class InsureeProfileGQLType(DjangoObjectType):
         fields = ['id','chf_id', 'other_names', 'last_name', 'insuree_policies', 
                 'insuree_claim', 'recent_policy', 'remaining_days', 'family_policy']
 
+        registry = Registry()
 
     insuree_claim = graphene.List(InsureeClaimGQLType)
     insuree_policies = graphene.List(InsureePolicyType)
@@ -162,6 +169,30 @@ class NoticeGQLType(DjangoObjectType):
         connection_class = ExtendedConnection
 
 
+class VoucherPaymentGQLType(DjangoObjectType):
+    voucher_image = graphene.String()
+    class Meta:
+        model = VoucherPayment
+        interfaces = (graphene.relay.Node,)
+        fields = ["voucher", "voucher_id", "insuree"]
+        filter_fields= {
+            # "insuree": ['exact', 'icontains', 'istartswith'],
+            # "voucher_id": ['exact', 'icontains', 'istartswith'],
+           
+
+        }
+        @classmethod
+        def resolve_voucher_image(self,info):
+            # print('value_obj',value_obj)
+            if self.voucher:
+                self.voucher = info.context.build_absolute_uri(self.voucher.url)
+            return self.voucher
+
+
+        connection_class = ExtendedConnection
+
+
+
 class HealthFacilityCoordinateGQLType(DjangoObjectType):
     distance=graphene.Float()
     class Meta:
@@ -169,6 +200,9 @@ class HealthFacilityCoordinateGQLType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields= '__all__'
 
+
+# class testObjtype(ObjectType):
+#     insuree = graphene.String()
 
 
 
@@ -181,7 +215,7 @@ class Query(graphene.ObjectType):
     
     notice = relay.Node.Field(NoticeGQLType)
     notices = DjangoFilterConnectionField(NoticeGQLType, orderBy=graphene.List(of_type=graphene.String))
-    
+    voucher_payments = DjangoFilterConnectionField(VoucherPaymentGQLType, orderBy=graphene.List(of_type=graphene.String), image_url=graphene.String())
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
 
@@ -216,8 +250,6 @@ class Query(graphene.ObjectType):
         return claim_models.Claim.objects.filter(id=claimId)
 
 
-
-
     def resolve_insuree_auth_otp(self, info, chfid, otp):
         checkotp = InsureeAuth.objects.filter(otp=otp).filter(insuree__chf_id=chfid).first()
         if checkotp:
@@ -232,7 +264,13 @@ class Query(graphene.ObjectType):
         # return ''
     def resolve_notices(self, info, **kwargs): 
         orderBy = kwargs.get('orderBy', None)
+        if not orderBy:
+            return Notice.objects.order_by("-created_at")
         return Notice.objects.order_by(*orderBy)
+
+    def resolve_voucher_payments(self, info, **kwargs): 
+        orderBy = kwargs.get('orderBy', None)
+        return VoucherPayment.objects.order_by(*orderBy)
 
     def generate_token(self):
         token = uuid.uuid4().hex[:6].upper()
@@ -250,6 +288,7 @@ class Mutation(graphene.ObjectType):
     update_notice = UpdateNoticeMutation.Field()
     delete_notice = DeleteNoticeMutation.Field()
     create_voucher_payment = CreateVoucherPaymentMutation.Field()
+    create_feedback = CreateFeedbackMutation.Field()
 
     
 

@@ -8,6 +8,7 @@ import graphene_django_optimizer
 from django.db.models import OuterRef, Avg, Subquery, Q
 from graphql import GraphQLError
 from core.schema import OpenIMISMutation
+
 # from graphene import relay, ObjectType
 
 # from .apps import ClaimConfig
@@ -28,7 +29,7 @@ from core.schema import OpenIMISMutation
 # from product.models import ProductItemOrService
 
 # logger = logging.getLogger(__name__)
-from .models import Notice, VoucherPayment
+from .models import Notice, VoucherPayment, Feedback
 from graphene_django import DjangoObjectType
 
 
@@ -86,6 +87,27 @@ class NoticeType(DjangoObjectType):
 #         print(kwargs)
 #         notice = Notice.objects.create(title=kwargs['title'], description=kwargs['description'])
 #         return CreateNoticeMutation(notice=notice)
+
+class FeedbackType(DjangoObjectType):
+    class Meta:
+        model = Feedback
+        fields = ["fullname", "email_address", "mobile_number", "queries"]
+
+
+class CreateFeedbackMutation(graphene.Mutation):
+    class Arguments:
+        fullname = graphene.String(required=True)
+        email_address = graphene.String(required=True)
+        mobile_number = graphene.String(required=True)
+        queries = graphene.String(required=True)
+    feedback= graphene.Field(FeedbackType)
+
+    @classmethod
+    def mutate(cls,root,info, **kwargs):
+        print(kwargs)
+        feedback = Feedback.objects.create(**kwargs)
+        return CreateFeedbackMutation(feedback=feedback)
+
 
 class CreateNoticeMutation(OpenIMISMutation):#graphene.relay.ClientIDMutation):
     # _mutation_module = "webapp"
