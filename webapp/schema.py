@@ -9,6 +9,8 @@ from graphene_django import DjangoObjectType
 from graphene import relay, ObjectType, Connection, Int
 from graphene_django.filter import DjangoFilterConnectionField
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
+from graphene_django.registry import Registry
+
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
@@ -82,6 +84,10 @@ class InsureeAuthGQLType(DjangoObjectType):
 #             self.image = info.context.build_absolute_uri(self.photo.url)
 #         return self.image
 
+
+
+
+
 class InsureeProfileGQLType(DjangoObjectType):
     class Meta:
         model = insuree_models.Insuree
@@ -89,6 +95,7 @@ class InsureeProfileGQLType(DjangoObjectType):
         fields = ['id','chf_id', 'other_names', 'last_name', 'insuree_policies', 
                 'insuree_claim', 'recent_policy', 'remaining_days', 'family_policy']
 
+        registry = Registry()
 
     insuree_claim = graphene.List(InsureeClaimGQLType)
     insuree_policies = graphene.List(InsureePolicyType)
@@ -177,6 +184,9 @@ class HealthFacilityCoordinateGQLType(DjangoObjectType):
         fields= '__all__'
 
 
+# class testObjtype(ObjectType):
+#     insuree = graphene.String()
+
 
 
 class Query(graphene.ObjectType):
@@ -189,8 +199,6 @@ class Query(graphene.ObjectType):
     notice = relay.Node.Field(NoticeGQLType)
     notices = DjangoFilterConnectionField(NoticeGQLType, orderBy=graphene.List(of_type=graphene.String))
     voucher_payments = DjangoFilterConnectionField(VoucherPaymentGQLType, orderBy=graphene.List(of_type=graphene.String), image_url=graphene.String())
-
-    
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
 
@@ -223,8 +231,6 @@ class Query(graphene.ObjectType):
 
     def resolve_insuree_claim(self, info, claimId):
         return claim_models.Claim.objects.filter(id=claimId)
-
-
 
 
     def resolve_insuree_auth_otp(self, info, chfid, otp):
@@ -264,6 +270,7 @@ class Mutation(graphene.ObjectType):
     update_notice = UpdateNoticeMutation.Field()
     delete_notice = DeleteNoticeMutation.Field()
     create_voucher_payment = CreateVoucherPaymentMutation.Field()
+    create_feedback = CreateFeedbackMutation.Field()
 
     
 

@@ -51,3 +51,11 @@ class VoucherPayment(models.Model):
     updated_at =   models.DateTimeField(verbose_name='date updated', null=True, auto_now_add=True)    
     
 
+class Feedback(models.Model):
+    fullname = models.CharField(max_length=50)
+    mobile_number = models.CharField(max_length=15)
+    email_address = models.EmailField(max_length=50, unique=False)
+    queries = models.CharField(max_length=500)
+
+    def __str__(self):
+        return self.fullname
