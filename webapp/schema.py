@@ -22,7 +22,12 @@ def gql_auth_insuree(function):
     def wrap(*args,**kwargs):
         if args:
             if args[1]: #info of graphql resolve
-                token=args[1].context.META.get('HTTP_INSUREE_TOKEN')
+                context = args[1].context
+                # user = context.user
+                user = None
+                if user:
+                    return function( *args, **kwargs)
+                token=context.META.get('HTTP_INSUREE_TOKEN')
                 print(token) #-H 'Insuree-Token: F008CA1' \
                 if token:
                     insuree=InsureeAuth.objects.filter(token=token).first()
@@ -89,7 +94,8 @@ class InsureeAuthGQLType(DjangoObjectType):
     insuree = graphene.Field(InsureeHolderGQLType)
     class Meta:
         model = InsureeAuth
-        fields = ['id', 'token', 'insuree']
+        # fields = ['id', 'token', 'insuree', 'otp']
+        fields = ['id', 'token', 'insuree'] #OTP from sms or email, not from API
 
 # class InsureeImageGQLType(DjangoObjectType):
 #     class Meta:
@@ -208,7 +214,8 @@ class Query(graphene.ObjectType):
     password = graphene.String()
     insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(), dob=graphene.Date())
     insuree_auth_otp = graphene.Field(InsureeAuthGQLType, chfid=graphene.String(), otp=graphene.String())
-    insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
+    # insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
+    insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.String())
     insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
     
     notice = relay.Node.Field(NoticeGQLType)
@@ -238,6 +245,7 @@ class Query(graphene.ObjectType):
                 insuree_auth_obj.save()
                 insuree_auth_obj.token = uuid.uuid4().hex[:6].upper() + str(insuree_auth_obj.id) #todo yeslai lamo banaune
             insuree_auth_obj.otp = uuid.uuid4().hex[:4]
+            print(insuree_auth_obj.otp) # sms/email bata OTP pathaune
             insuree_auth_obj.save()
         if insuree_auth_obj:
             insuree_auth_obj.token = '' #user lai login garda otp verify agadi token nadine
@@ -258,16 +266,19 @@ class Query(graphene.ObjectType):
         return None
 
     def resolve_insuree_profile(self, info, insureeCHFID,**kwargs):
-        return insuree_models.Insuree.objects.get(id=insureeCHFID)
+        return insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
 
         # if insuree_obj:
         #     return InsureeVerifyGQLType(insuree_obj)
         # return ''
+
+    @gql_auth_insuree
     def resolve_notices(self, info, **kwargs): 
         orderBy = kwargs.get('orderBy', None)
         if not orderBy:
             return Notice.objects.order_by("-created_at")
         return Notice.objects.order_by(*orderBy)
+
     def resolve_feedbacks(self, info, **kwargs):
         orderBy = kwargs.get('orderBy', None)
         if not orderBy:
