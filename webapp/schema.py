@@ -76,8 +76,6 @@ class InsureePolicyType(DjangoObjectType):
     class Meta:
         model = insuree_models.InsureePolicy
         fields = '__all__'
-    # def resolve_insuree_policies(self, info):
-    #     return self.
 
 class InsureeClaimGQLType(DjangoObjectType):
     class Meta:
