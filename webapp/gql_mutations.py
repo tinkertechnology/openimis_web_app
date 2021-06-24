@@ -32,6 +32,8 @@ from core.schema import OpenIMISMutation
 from .models import Notice, VoucherPayment, Feedback
 from graphene_django import DjangoObjectType
 from graphene import relay, ObjectType, Connection, Int
+from insuree import models as insuree_models
+
 class ExtendedConnection(Connection):
     class Meta:
         abstract = True
@@ -49,27 +51,24 @@ class VoucherPaymentType(DjangoObjectType):
     class Meta:
         model = VoucherPayment
         fields = ['voucher']
-
+from .models import  Notification
 class CreateVoucherPaymentMutation(graphene.Mutation):
     # _mutation_module = "webapp"
     # _mutation_class = "CreateNoticeMutation"
     class Arguments(object):
-        
         file = graphene.List(graphene.String)
+        insuree = graphene.String()
     ok = graphene.Boolean()
     # @classmethod
-    def mutate (self, info, file):
+    def mutate (self, info, file, insuree):
         files = info.context.FILES
-        print(files)
-
-        VoucherPayment.objects.create(voucher=files.get('file'))
+        # print(info.context)
+        insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insuree).first()
+        VoucherPayment.objects.create(voucher=files.get('file'), insuree=insuree_obj)
+        Notification.objects.create(insuree=insuree_obj, message="Your Submission has been saved thank you", chf_id=insuree)
         return CreateVoucherPaymentMutation(ok=True)
         # img = info.context.files[file].read()
     
-
-
-
-
 
 class NoticeInput(graphene.InputObjectType):
     # id = graphene.Int(required=False)

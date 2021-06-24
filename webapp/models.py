@@ -1,6 +1,7 @@
 from django.db import models
 import uuid
 from datetime import datetime
+
 from insuree.apps import InsureeConfig
 from insuree import models as insuree_models
 from location import models as location_models
@@ -56,6 +57,13 @@ class Feedback(models.Model):
     mobile_number = models.CharField(max_length=15)
     email_address = models.EmailField(max_length=50, unique=False)
     queries = models.CharField(max_length=500)
+    created_at =  models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
 
     def __str__(self):
         return self.fullname
+
+class Notification(models.Model):
+    insuree = models.ForeignKey(insuree_models.Insuree, on_delete=models.CASCADE, related_name="insuree_nofification")
+    chf_id = models.CharField(max_length=100, null=True)
+    message = models.CharField(max_length=200)
+    created_at =  models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)

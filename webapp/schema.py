@@ -10,6 +10,7 @@ from graphene import relay, ObjectType, Connection, Int
 from graphene_django.filter import DjangoFilterConnectionField
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 from graphene_django.registry import Registry
+from .models import Notification
 
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
@@ -87,6 +88,11 @@ class InsureeClaimGQLType(DjangoObjectType):
         model = claim_models.Claim
         fields = '__all__'
 
+class NotificationGQLType(DjangoObjectType):
+    class Meta:
+        model = Notification
+        fields = '__all__'
+
 
 class InsureeAuthGQLType(DjangoObjectType):
     insuree = graphene.Field(InsureeHolderGQLType)
@@ -124,6 +130,7 @@ class InsureeProfileGQLType(DjangoObjectType):
     family_policy = graphene.Field(InsureePolicyType)
     insuree_family_policies = graphene.Field(PolicyType)
     remaining_days = graphene.String()
+
     def resolve_photos(value_obj,info):
         return value_obj.photos.all
     
@@ -141,6 +148,10 @@ class InsureeProfileGQLType(DjangoObjectType):
         policy_obj = insuree_policy_obj.policy
         return policy_obj
 
+    def resolve_notifications(value_obj, info, insureeCHFID, **kwargs):
+        print('chfid', kwargs)
+
+        return Notification.objects.filter(chf_id=insureeCHFID).orderBy("-created_at")
 
     def resolve_remaining_days(value_obj, info):
         latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
@@ -212,7 +223,6 @@ class Query(graphene.ObjectType):
     password = graphene.String()
     insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(), dob=graphene.Date())
     insuree_auth_otp = graphene.Field(InsureeAuthGQLType, chfid=graphene.String(), otp=graphene.String())
-    # insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
     insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.String())
     insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
     
@@ -224,7 +234,7 @@ class Query(graphene.ObjectType):
     voucher_payments = DjangoFilterConnectionField(VoucherPaymentGQLType, orderBy=graphene.List(of_type=graphene.String), image_url=graphene.String())
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
-
+    notifications = graphene.List(NotificationGQLType, insureeCHFID=graphene.String())
 
     def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob,  **kwargs):
         auth=False
