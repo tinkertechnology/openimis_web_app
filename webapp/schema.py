@@ -11,6 +11,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 from graphene_django.registry import Registry
 from .models import Notification
+from insuree.schema import  InsureeGQLType
 
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
@@ -95,7 +96,7 @@ class NotificationGQLType(DjangoObjectType):
 
 
 class InsureeAuthGQLType(DjangoObjectType):
-    insuree = graphene.Field(InsureeHolderGQLType)
+    insuree = graphene.Field(InsureeGQLType)
     class Meta:
         model = InsureeAuth
         # fields = ['id', 'token', 'insuree', 'otp']
@@ -148,10 +149,7 @@ class InsureeProfileGQLType(DjangoObjectType):
         policy_obj = insuree_policy_obj.policy
         return policy_obj
 
-    def resolve_notifications(value_obj, info, insureeCHFID, **kwargs):
-        print('chfid', kwargs)
 
-        return Notification.objects.filter(chf_id=insureeCHFID).orderBy("-created_at")
 
     def resolve_remaining_days(value_obj, info):
         latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
@@ -223,7 +221,7 @@ class Query(graphene.ObjectType):
     password = graphene.String()
     insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(), dob=graphene.Date())
     insuree_auth_otp = graphene.Field(InsureeAuthGQLType, chfid=graphene.String(), otp=graphene.String())
-    insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.String())
+    insuree_profile = graphene.Field(InsureeGQLType, insureeCHFID=graphene.String())
     insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
     
     notice = relay.Node.Field(NoticeGQLType)
@@ -262,6 +260,10 @@ class Query(graphene.ObjectType):
     def resolve_insuree_policy(self, info , insureeCHFID):
         policy_obj = policy_models.Policy.filter()
 
+    def resolve_notifications(self, info, insureeCHFID, **kwargs):
+        print('chfid')
+
+        return Notification.objects.filter(chf_id=insureeCHFID).order_by("-created_at")
 
     def resolve_insuree_claim(self, info, claimId):
         return claim_models.Claim.objects.filter(id=claimId)
