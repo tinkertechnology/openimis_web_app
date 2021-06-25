@@ -67,3 +67,4 @@ class Notification(models.Model):
     chf_id = models.CharField(max_length=100, null=True)
     message = models.CharField(max_length=200)
     created_at =  models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
+
