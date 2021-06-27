@@ -328,5 +328,6 @@ class Mutation(graphene.ObjectType):
     delete_notice = DeleteNoticeMutation.Field()
     create_voucher_payment = CreateVoucherPaymentMutation.Field()
     create_feedback = CreateFeedbackMutation.Field()
+    update_profile = CreateOrUpdateProfileMutation.Field()
 
 # schema = graphene.Schema(query=Query, mutation=Mutation)

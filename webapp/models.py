@@ -68,3 +68,13 @@ class Notification(models.Model):
     message = models.CharField(max_length=200)
     created_at =  models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
 
+from django.db.models.signals import post_save, post_delete, pre_save
+
+class Profile(models.Model):
+    insuree = models.ForeignKey(insuree_models.Insuree, on_delete=models.CASCADE, related_name="webapp_insuree_profile")
+    phone = models.CharField(max_length=15, null=True)
+    photo = models.ImageField(upload_to="insuree/photo")
+    email = models.EmailField(null=True)
+    created_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
+    updated_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
+

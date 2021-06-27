@@ -51,6 +51,46 @@ class VoucherPaymentType(DjangoObjectType):
     class Meta:
         model = VoucherPayment
         fields = ['voucher']
+
+from .models import Profile
+
+class ProfileObjectType(DjangoObjectType):
+    class Meta:
+        model = Profile
+        fields = ['photo', "email", "phone"]
+
+
+
+class CreateOrUpdateProfileMutation(graphene.Mutation):
+    # _mutation_module = "webapp"
+    # _mutation_class = "CreateNoticeMutation"
+    class Arguments(object):
+        file = graphene.List(graphene.String)
+        insureeCHFID = graphene.String() #basically chfid
+        email = graphene.String()
+        phone = graphene.String()
+    ok = graphene.Boolean()
+    # @classmethod
+    def mutate (self, info, file, insureeCHFID, email, phone):
+        files = info.context.FILES
+        print(files)
+        insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
+        print(insuree_obj.pk)
+        instance = Profile.objects.filter(insuree_id=insuree_obj.pk).first()
+        if not instance:
+            print("1111")
+            instance = Profile()
+        instance.photo =  files.get('file')  if files.get('file') else instance.photo
+        instance.email = email if email else instance.email
+        instance.phone = phone if phone else instance.phone
+        instance.save()
+        return CreateOrUpdateProfileMutation(ok=True)
+
+
+
+
+
+
 from .models import  Notification
 class CreateVoucherPaymentMutation(graphene.Mutation):
     # _mutation_module = "webapp"
