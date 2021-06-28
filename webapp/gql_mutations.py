@@ -47,6 +47,20 @@ def fbis64(inp):
 # logger = logging.getLogger(__name__)
 from .models import Notice, VoucherPayment, Feedback
 from graphene_django import DjangoObjectType
+from graphene import relay, ObjectType, Connection, Int
+from insuree import models as insuree_models
+
+class ExtendedConnection(Connection):
+    class Meta:
+        abstract = True
+
+    total_count = Int()
+    edge_count = Int()
+
+    def resolve_total_count(root, info, **kwargs):
+        return root.length
+    def resolve_edge_count(root, info, **kwargs):
+        return len(root.edges)
 
 
 class VoucherPaymentType(DjangoObjectType):
@@ -54,26 +68,59 @@ class VoucherPaymentType(DjangoObjectType):
         model = VoucherPayment
         fields = ['voucher']
 
+from .models import Profile
+
+
+
+
+class CreateOrUpdateProfileMutation(graphene.Mutation):
+    # _mutation_module = "webapp"
+    # _mutation_class = "CreateNoticeMutation"
+    class Arguments(object):
+        file = graphene.List(graphene.String)
+        insureeCHFID = graphene.String() #basically chfid
+        email = graphene.String()
+        phone = graphene.String()
+    ok = graphene.Boolean()
+    # @classmethod
+    def mutate (self, info, file, insureeCHFID, email, phone):
+        files = info.context.FILES
+        print(files)
+        insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
+        print(insuree_obj.pk)
+        instance = Profile.objects.filter(insuree_id=insuree_obj.pk).first()
+        if not instance:
+            print("1111")
+            instance = Profile()
+        instance.photo =  files.get('file')  if files.get('file') else instance.photo
+        instance.email = email if email else instance.email
+        instance.phone = phone if phone else instance.phone
+        instance.save()
+        return CreateOrUpdateProfileMutation(ok=True)
+
+
+
+
+
+
+from .models import  Notification
 class CreateVoucherPaymentMutation(graphene.Mutation):
     # _mutation_module = "webapp"
     # _mutation_class = "CreateNoticeMutation"
     class Arguments(object):
-        
         file = graphene.List(graphene.String)
+        insuree = graphene.String()
     ok = graphene.Boolean()
     # @classmethod
-    def mutate (self, info, file):
+    def mutate (self, info, file, insuree):
         files = info.context.FILES
-        print(files)
-
-        VoucherPayment.objects.create(voucher=files.get('file'))
+        # print(info.context)
+        insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insuree).first()
+        VoucherPayment.objects.create(voucher=files.get('file'), insuree=insuree_obj)
+        Notification.objects.create(insuree=insuree_obj, message="Your Submission has been saved thank you", chf_id=insuree)
         return CreateVoucherPaymentMutation(ok=True)
         # img = info.context.files[file].read()
     
-
-
-
-
 
 class NoticeInput(graphene.InputObjectType):
     # id = graphene.Int(required=False)
@@ -84,31 +131,18 @@ class NoticeType(DjangoObjectType):
     class Meta:
         model = Notice
         fields = ['title', 'description']
-        
 
 
-# class CreateNoticeMutation(graphene.Mutation):
-#     # _mutation_module = "webapp"
-#     # _mutation_class = "CreateNoticeMutation"
-#     class Arguments:
-#         # notice_input = NoticeInput(required=True)
-#         # print(notice_input.__dict__)
-#         title = graphene.String(required=True)
-#         description = graphene.String(required=True)
-
-#     notice = graphene.Field(NoticeType)
-   
-#     @classmethod
-#     def mutate(self,info,id, **kwargs):
-#         print(kwargs)
-#         notice = Notice.objects.create(title=kwargs['title'], description=kwargs['description'])
-#         return CreateNoticeMutation(notice=notice)
-
-class FeedbackType(DjangoObjectType):
+class FeedbackAppGQLType(DjangoObjectType):
     class Meta:
         model = Feedback
-        fields = ["fullname", "email_address", "mobile_number", "queries"]
+        interfaces = (graphene.relay.Node,)
+        filter_fields= {
+            "fullname": ['exact', 'icontains', 'istartswith'],
 
+        }
+
+        connection_class = ExtendedConnection
 
 class CreateFeedbackMutation(graphene.Mutation):
     class Arguments:
@@ -116,7 +150,7 @@ class CreateFeedbackMutation(graphene.Mutation):
         email_address = graphene.String(required=True)
         mobile_number = graphene.String(required=True)
         queries = graphene.String(required=True)
-    feedback= graphene.Field(FeedbackType)
+    feedback= graphene.Field(FeedbackAppGQLType)
 
     @classmethod
     def mutate(cls,root,info, **kwargs):
