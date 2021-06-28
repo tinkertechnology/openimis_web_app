@@ -263,6 +263,7 @@ class Query(graphene.ObjectType):
         #     return InsureeVerifyGQLType(insuree_obj)
         # return ''
     def resolve_notices(self, info, **kwargs): 
+        print('resolve_notices')
         orderBy = kwargs.get('orderBy', None)
         if not orderBy:
             return Notice.objects.order_by("-created_at")
