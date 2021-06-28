@@ -54,10 +54,6 @@ class VoucherPaymentType(DjangoObjectType):
 
 from .models import Profile
 
-class ProfileObjectType(DjangoObjectType):
-    class Meta:
-        model = Profile
-        fields = ['photo', "email", "phone"]
 
 
 
@@ -119,26 +115,6 @@ class NoticeType(DjangoObjectType):
     class Meta:
         model = Notice
         fields = ['title', 'description']
-        
-
-
-# class CreateNoticeMutation(graphene.Mutation):
-#     # _mutation_module = "webapp"
-#     # _mutation_class = "CreateNoticeMutation"
-#     class Arguments:
-#         # notice_input = NoticeInput(required=True)
-#         # print(notice_input.__dict__)
-#         title = graphene.String(required=True)
-#         description = graphene.String(required=True)
-
-#     notice = graphene.Field(NoticeType)
-   
-#     @classmethod
-#     def mutate(self,info,id, **kwargs):
-#         print(kwargs)
-#         notice = Notice.objects.create(title=kwargs['title'], description=kwargs['description'])
-#         return CreateNoticeMutation(notice=notice)
-
 
 
 class FeedbackAppGQLType(DjangoObjectType):

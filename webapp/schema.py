@@ -104,6 +104,15 @@ class InsureeAuthGQLType(DjangoObjectType):
         # fields = ['id', 'token', 'insuree', 'otp']
         fields = ['id', 'token', 'insuree']  # OTP from sms or email, not from API
 
+class ProfileGQLType(DjangoObjectType):
+    class Meta:
+        model = Profile
+        fields = ['photo', "email", "phone"]
+
+    def resolve_photo(self, info):
+        if self.photo:
+            self.photo = info.context.build_absolute_uri(self.photo.url)
+        return self.photo
 
 # class InsureeImageGQLType(DjangoObjectType):
 #     class Meta:
@@ -239,6 +248,8 @@ class Query(graphene.ObjectType):
     feedback = relay.Node.Field(FeedbackAppGQLType)
     feedbacks = DjangoFilterConnectionField(FeedbackAppGQLType, orderBy=graphene.List(of_type=graphene.String))
 
+    profile = graphene.Field(ProfileGQLType, insureeCHFID=graphene.String())
+
     voucher_payments = DjangoFilterConnectionField(VoucherPaymentGQLType,
                                                    orderBy=graphene.List(of_type=graphene.String),
                                                    image_url=graphene.String())
@@ -293,6 +304,8 @@ class Query(graphene.ObjectType):
         # if insuree_obj:
         #     return InsureeVerifyGQLType(insuree_obj)
         # return ''
+    def resolve_profile(self, info, insureeCHFID):
+        return Profile.objects.filter(insuree__chf_id=insureeCHFID).first()
 
     # @gql_auth_insuree
     def resolve_notices(self, info, **kwargs):
