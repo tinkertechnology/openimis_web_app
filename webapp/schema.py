@@ -2,6 +2,8 @@ import django
 import uuid
 import graphene
 from datetime import timedelta, date
+
+from django_filters import CharFilter
 from insuree import models as insuree_models
 from claim import models as claim_models
 from policy import models as policy_models
@@ -184,26 +186,31 @@ class NoticeGQLType(DjangoObjectType):
 
 
 class VoucherPaymentGQLType(DjangoObjectType):
-    voucher_image = graphene.String()
-
+    # insuree_name = graphene.String()
+    # insuree_name = CharFilter(field_name='insuree__othername', lookup_expr='icontains', distinct=True)
     class Meta:
         model = VoucherPayment
         interfaces = (graphene.relay.Node,)
         fields = ["voucher", "voucher_id", "insuree"]
         filter_fields = {
-            # "insuree": ['exact', 'icontains', 'istartswith'],
+            # "title" : CharFilter(field_name='insuree__chf_id', lookup_expr='icontains', distinct=True),
+            "insuree__chf_id": ['icontains'],
+            "insuree__other_names" : ['icontains'],
+            "insuree__last_name" : ["icontains"]
             # "voucher_id": ['exact', 'icontains', 'istartswith'],
 
         }
-
-        @classmethod
-        def resolve_voucher_image(self, info):
-            # print('value_obj',value_obj)
-            if self.voucher:
-                self.voucher = info.context.build_absolute_uri(self.voucher.url)
-            return self.voucher
-
         connection_class = ExtendedConnection
+        # @classmethod
+    def resolve_voucher(self, info):
+        # print('value_obj',value_obj)
+        if self.voucher:
+            self.voucher = info.context.build_absolute_uri(self.voucher.url)
+        return self.voucher
+    # def resolve_insuree_name(self, info):
+    #     return self.insuree__name
+
+
 
 
 class HealthFacilityCoordinateGQLType(DjangoObjectType):

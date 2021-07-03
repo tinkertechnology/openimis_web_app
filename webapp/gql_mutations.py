@@ -52,6 +52,9 @@ class VoucherPaymentType(DjangoObjectType):
         model = VoucherPayment
         fields = ['voucher']
 
+
+
+
 from .models import Profile
 
 
