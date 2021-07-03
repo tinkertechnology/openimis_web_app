@@ -311,6 +311,7 @@ class Query(graphene.ObjectType):
         # if insuree_obj:
         #     return InsureeVerifyGQLType(insuree_obj)
         # return ''
+
     def resolve_profile(self, info, insureeCHFID):
         return Profile.objects.filter(insuree__chf_id=insureeCHFID).first()
 

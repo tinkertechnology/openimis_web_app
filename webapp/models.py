@@ -21,6 +21,7 @@ class InsureeAuth(models.Model):
         return name
 
 class Notice(models.Model):
+    #id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=500)
     active = models.BooleanField(default=True)

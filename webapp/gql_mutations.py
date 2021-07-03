@@ -9,6 +9,22 @@ from django.db.models import OuterRef, Avg, Subquery, Q
 from graphql import GraphQLError
 from core.schema import OpenIMISMutation
 
+def dfprint(i):
+    print(i)
+    pass
+
+# format base64 id string
+def fbis64(inp):
+    dfprint('fbis64')
+    # NoticeGQLType:38
+    # 
+    bstr=base64.b64decode(inp)
+    sstr=bstr.decode('utf-8')
+    istrs=sstr.split(':')
+    istr=istrs[1]
+    dfprint([bstr, sstr, istr])
+    return istr
+
 # from graphene import relay, ObjectType
 
 # from .apps import ClaimConfig
@@ -159,6 +175,7 @@ class CreateNoticeMutation(OpenIMISMutation):#graphene.relay.ClientIDMutation):
    
     @classmethod
     def mutate_and_get_payload(cls, root, info, **input):
+        print('CreateNoticeMutation mutate')
         data = input
         if "client_mutation_id" in data:
             data.pop('client_mutation_id')
@@ -169,17 +186,42 @@ class CreateNoticeMutation(OpenIMISMutation):#graphene.relay.ClientIDMutation):
         return CreateNoticeMutation(notice=notice)
 
 
-class UpdateNoticeMutation(graphene.Mutation):
-    class Arguments:
-        id = graphene.Int(required=True)
-        title = graphene.String(required=False,)
-        description = graphene.String(required=False)
+# class UpdateNoticeMutation(graphene.Mutation):
+#     class Arguments:
+#         id = graphene.Int(required=True)
+#         title = graphene.String(required=False,)
+#         description = graphene.String(required=False)
+#     notice = graphene.Field(NoticeType)
+    
+#     def mutate(self, info,cls, **input):
+#         try:
+#             notice = Notice.objects.filter(pk=kwargs['id']).first()
+#             notice.update(title=kwargs['title'], description=kwargs['description'])
+#             return UpdateNoticeMutation(notice=notice)
+#         except:
+#             return GraphQLError('The notice you are updating might not exist anymore')
+
+class UpdateNoticeMutation(OpenIMISMutation):
     notice = graphene.Field(NoticeType)
+
+    class Input(OpenIMISMutation.Input):
+        id = graphene.String()
+        title = graphene.String(required=False,)
+        description = graphene.String(required=True)
+        client_mutation_id = graphene.String()
+        client_mutation_label = graphene.String()
+    
     @classmethod
-    def mutate(self, info,cls, **kwargs):
+    def mutate_and_get_payload(cls, root, info, **input):
+        dfprint('UpdateNoticeMutation mutate')
+        data = input
+        if "client_mutation_id" in data:
+            data.pop('client_mutation_id')
+        if "client_mutation_label" in data:
+            data.pop('client_mutation_label')
         try:
-            notice = Notice.objects.filter(pk=kwargs['id']).first()
-            notice.update(title=kwargs['title'], description=kwargs['description'])
+            notice = Notice.objects.filter(pk=fbis64(input['id'])) #;dfprint(notice)
+            notice.update(title=input['title'], description=input['description'])
             return UpdateNoticeMutation(notice=notice)
         except:
             return GraphQLError('The notice you are updating might not exist anymore')
