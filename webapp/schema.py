@@ -107,14 +107,20 @@ class InsureeAuthGQLType(DjangoObjectType):
         fields = ['id', 'token', 'insuree']  # OTP from sms or email, not from API
 
 class ProfileGQLType(DjangoObjectType):
+    remaining_days = graphene.String()
     class Meta:
         model = Profile
-        fields = ['photo', "email", "phone"]
+        fields = ['photo', "email", "phone", "insuree", "remaining_days"]
 
     def resolve_photo(self, info):
         if self.photo:
             self.photo = info.context.build_absolute_uri(self.photo.url)
         return self.photo
+
+    def resolve_remaining_days(value_obj, info):
+        latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj.insuree).order_by('-expiry_date').first()
+        remaining_days = (latest_policy.expiry_date - date.today()).days
+        return remaining_days
 
 # class InsureeImageGQLType(DjangoObjectType):
 #     class Meta:
@@ -313,7 +319,15 @@ class Query(graphene.ObjectType):
         # return ''
 
     def resolve_profile(self, info, insureeCHFID):
-        return Profile.objects.filter(insuree__chf_id=insureeCHFID).first()
+        profile = Profile.objects.filter(insuree__chf_id=insureeCHFID).first()
+        if profile:
+            return profile
+        else:
+            insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
+            print(insuree_obj.__dict__)
+            profile = Profile.objects.create(insuree=insuree_obj, email=insuree_obj.email,phone=insuree_obj.phone)
+        return profile
+
 
     # @gql_auth_insuree
     def resolve_notices(self, info, **kwargs):
