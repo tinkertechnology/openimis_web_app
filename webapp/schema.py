@@ -364,5 +364,7 @@ class Mutation(graphene.ObjectType):
     create_voucher_payment = CreateVoucherPaymentMutation.Field()
     create_feedback = CreateFeedbackMutation.Field()
     update_profile = CreateOrUpdateProfileMutation.Field()
+    create_temporary_insuree = CreateTempRegInsureeMutation.Field()
+    create_insuree_mutation_from_temp = CreateInsureeMutation.Field()
 
 # schema = graphene.Schema(query=Query, mutation=Mutation)

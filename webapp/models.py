@@ -79,3 +79,11 @@ class Profile(models.Model):
     created_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
     updated_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
 
+
+class InsureeTempReg(models.Model):
+    json = models.TextField()
+    is_approved = models.BooleanField(default=False)
+
+
+
+

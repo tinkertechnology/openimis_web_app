@@ -1,13 +1,10 @@
-import json
-import logging
-import uuid
-import pathlib
 import base64
+import base64
+
 import graphene
-import graphene_django_optimizer
-from django.db.models import OuterRef, Avg, Subquery, Q
-from graphql import GraphQLError
 from core.schema import OpenIMISMutation
+from graphql import GraphQLError
+
 
 def dfprint(i):
     print(i)
@@ -47,7 +44,7 @@ def fbis64(inp):
 # logger = logging.getLogger(__name__)
 from .models import Notice, VoucherPayment, Feedback
 from graphene_django import DjangoObjectType
-from graphene import relay, ObjectType, Connection, Int
+from graphene import Connection, Int
 from insuree import models as insuree_models
 
 class ExtendedConnection(Connection):
@@ -239,7 +236,42 @@ class DeleteNoticeMutation(graphene.Mutation):
             notice.save()
             return DeleteNoticeMutation(notice=notice)
         except:
-            return GraphQLError('The notice you are deleting might not exist anymore')            
+            return GraphQLError('The notice you are deleting might not exist anymore')
+
+
+from .models import InsureeTempReg
+
+from insuree.schema import  InsureeGQLType
+class CreateTempRegInsureeMutation(graphene.Mutation):
+    class Arguments:
+        jeson = graphene.JSONString()
+    ok = graphene.Boolean()
+    @classmethod
+    def mutate(self, info, cls, **kwargs):
+        print(kwargs)
+        InsureeTempReg.objects.create(json=kwargs['jeson'])
+        return CreateTempRegInsureeMutation(ok=True)
+
+import json
+
+class CreateInsureeMutation(graphene.Mutation):
+    class Arguments:
+        id = graphene.String()
+    ok = graphene.Boolean()
+    @classmethod
+    def mutate(self, info, cls, **kwargs):
+        temp_insuree = InsureeTempReg.objects.filter(pk=3).first()
+        dict_insuree = temp_insuree
+        insuree_str_json = dict_insuree.json
+        insuree_dict = json.loads(insuree_str_json)
+        insuree = InsureeGQLType(insuree_dict.get("Insuree"))
+        insuree.save()
+        return CreateInsureeMutation(ok=True)
+
+
+
+
+
 
 
 # class ClaimItemInputType(InputObjectType):
