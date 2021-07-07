@@ -12,6 +12,7 @@ from graphene import relay, ObjectType, Connection, Int
 from graphene_django.filter import DjangoFilterConnectionField
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 from graphene_django.registry import Registry
+from .models import  InsureeTempReg
 
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
@@ -246,6 +247,23 @@ class NotificationGQLType(DjangoObjectType):
 # class testObjtype(ObjectType):
 #     insuree = graphene.String()
 
+class TemporaryRegGQLType(DjangoObjectType):
+    class Meta:
+        model = InsureeTempReg
+        interfaces = (graphene.relay.Node,)
+        fields = '__all__'
+        filter_fields = {
+
+
+        }
+
+        connection_class = ExtendedConnection
+
+
+
+
+
+
 
 class Query(graphene.ObjectType):
     password = graphene.String()
@@ -256,10 +274,15 @@ class Query(graphene.ObjectType):
     insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.String())
     insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
     notifications =  DjangoFilterConnectionField(NotificationGQLType, insureeCHFID=graphene.String())
+
     notice = relay.Node.Field(NoticeGQLType)
     notices = DjangoFilterConnectionField(NoticeGQLType, orderBy=graphene.List(of_type=graphene.String))
+
     feedback = relay.Node.Field(FeedbackAppGQLType)
     feedbacks = DjangoFilterConnectionField(FeedbackAppGQLType, orderBy=graphene.List(of_type=graphene.String))
+
+    tempreg = relay.Node.Field(TemporaryRegGQLType)
+    tempregs = DjangoFilterConnectionField(TemporaryRegGQLType, orderBy=graphene.List(of_type=graphene.String))
 
     profile = graphene.Field(ProfileGQLType, insureeCHFID=graphene.String())
 
