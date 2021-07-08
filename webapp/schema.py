@@ -1,7 +1,9 @@
 import django
-import uuid 
+import uuid
 import graphene
 from datetime import timedelta, date
+
+from django_filters import CharFilter
 from insuree import models as insuree_models
 from claim import models as claim_models
 from policy import models as policy_models
@@ -9,11 +11,38 @@ from graphene_django import DjangoObjectType
 from graphene import relay, ObjectType, Connection, Int
 from graphene_django.filter import DjangoFilterConnectionField
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
+from graphene_django.registry import Registry
+from .models import  InsureeTempReg
+
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
 
 from django.db.models.expressions import OrderBy, RawSQL
+from django.core.exceptions import PermissionDenied
+
+
+def gql_auth_insuree(function):
+    def wrap(*args, **kwargs):
+        if args:
+            if args[1]:  # info of graphql resolve
+                context = args[1].context
+                # user = context.user
+                user = None
+                if user:
+                    return function(*args, **kwargs)
+                token = context.META.get('HTTP_INSUREE_TOKEN')
+                print(token)  # -H 'Insuree-Token: F008CA1' \
+                if token:
+                    insuree = InsureeAuth.objects.filter(token=token).first()
+                    if insuree:
+                        return function(*args, **kwargs)
+        raise PermissionDenied("No insuree token")
+
+    wrap.__doc__ = function.__doc__
+    wrap.__name__ = function.__name__
+    return wrap
+
 
 def get_qs_nearby_hfcoord(latitude, longitude, max_distance=None):
     """
@@ -27,31 +56,34 @@ def get_qs_nearby_hfcoord(latitude, longitude, max_distance=None):
 	            cos( radians( %s ) ) * cos( radians( latitude ) ) * cos ( radians(longitude) - radians(%s) ) +
 	            sin( radians(%s) ) * sin( radians( latitude ) )
 	        )
-    """ % (latitude, longitude, latitude) 
+    """ % (latitude, longitude, latitude)
 
     distance_raw_sql = RawSQL(
         gcd_formula,
         ()
     )
     qs = HealthFacilityCoordinate.objects.all() \
-    .annotate(distance=distance_raw_sql)\
-    .order_by('distance')
+        .annotate(distance=distance_raw_sql) \
+        .order_by('distance')
     if max_distance is not None:
-    	qs = qs.filter( distance__lt= float(max_distance) )
+        qs = qs.filter(distance__lt=float(max_distance))
     qs = qs.exclude(latitude__isnull=True).exclude(longitude__isnull=True)
 
-    #print(qs.query) #print(qs.all())
+    # print(qs.query) #print(qs.all())
     return qs
+
 
 class InsureeHolderGQLType(DjangoObjectType):
     class Meta:
         model = insuree_models.Insuree
         fields = '__all__'
 
+
 class PolicyType(DjangoObjectType):
     class Meta:
         model = policy_models.Policy
         fields = '__all__'
+
 
 class InsureePolicyType(DjangoObjectType):
     class Meta:
@@ -59,6 +91,7 @@ class InsureePolicyType(DjangoObjectType):
         fields = '__all__'
     # def resolve_insuree_policies(self, info):
     #     return self.
+
 
 class InsureeClaimGQLType(DjangoObjectType):
     class Meta:
@@ -68,27 +101,47 @@ class InsureeClaimGQLType(DjangoObjectType):
 
 class InsureeAuthGQLType(DjangoObjectType):
     insuree = graphene.Field(InsureeHolderGQLType)
+
     class Meta:
         model = InsureeAuth
-        fields = ['id', 'token', 'insuree']
+        # fields = ['id', 'token', 'insuree', 'otp']
+        fields = ['id', 'token', 'insuree']  # OTP from sms or email, not from API
+
+class ProfileGQLType(DjangoObjectType):
+    remaining_days = graphene.String()
+    class Meta:
+        model = Profile
+        fields = ['photo', "email", "phone", "insuree", "remaining_days"]
+
+    def resolve_photo(self, info):
+        if self.photo:
+            self.photo = info.context.build_absolute_uri(self.photo.url)
+        return self.photo
+
+    def resolve_remaining_days(value_obj, info):
+        latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj.insuree).order_by('-expiry_date').first()
+        remaining_days = (latest_policy.expiry_date - date.today()).days
+        return remaining_days
 
 # class InsureeImageGQLType(DjangoObjectType):
 #     class Meta:
 #         model = insuree_models.InsureePhoto
 #         fields = ['id', 'photo']
-    
+
 #     def resolve_photo(self, info):
 #         if self.image:
 #             self.image = info.context.build_absolute_uri(self.photo.url)
 #         return self.image
 
+
 class InsureeProfileGQLType(DjangoObjectType):
     class Meta:
         model = insuree_models.Insuree
         interfaces = (graphene.relay.Node,)
-        fields = ['id','chf_id', 'other_names', 'last_name', 'insuree_policies', 
-                'insuree_claim', 'recent_policy', 'remaining_days', 'family_policy']
+        fields = ['id', 'chf_id', 'other_names', 'last_name', 'insuree_policies',
+                  'insuree_claim', 'recent_policy', 'remaining_days', 'family_policy']
 
+        registry = Registry()
 
     insuree_claim = graphene.List(InsureeClaimGQLType)
     insuree_policies = graphene.List(InsureePolicyType)
@@ -96,46 +149,40 @@ class InsureeProfileGQLType(DjangoObjectType):
     family_policy = graphene.Field(InsureePolicyType)
     insuree_family_policies = graphene.Field(PolicyType)
     remaining_days = graphene.String()
-    def resolve_photos(value_obj,info):
+
+    def resolve_photos(value_obj, info):
         return value_obj.photos.all
-    
+
     def resolve_insuree_policies(value_obj, info):
         return value_obj.insuree_policies.all()
+
     def resolve_insuree_claim(value_obj, info):
         # return value_obj.insuree.all()
         return claim_models.Claim.objects.filter(insuree=value_obj)
-    
+
     def resolve_recent_policy(value_obj, info):
         latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
         return latest_policy
+
     def resolve_family_policy(value_obj, info):
         insuree_policy_obj = insuree_models.InsureePolicy.objects.filter(insuree=value_obj)
         policy_obj = insuree_policy_obj.policy
         return policy_obj
 
-
     def resolve_remaining_days(value_obj, info):
         latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
-        remaining_days = (latest_policy.expiry_date-date.today()).days
+        remaining_days = (latest_policy.expiry_date - date.today()).days
         return remaining_days
-    
-class ExtendedConnection(Connection):
-    class Meta:
-        abstract = True
 
-    total_count = Int()
-    edge_count = Int()
 
-    def resolve_total_count(root, info, **kwargs):
-        return root.length
-    def resolve_edge_count(root, info, **kwargs):
-        return len(root.edges)
+from .gql_mutations import FeedbackAppGQLType
+
 
 class NoticeGQLType(DjangoObjectType):
     class Meta:
         model = Notice
         interfaces = (graphene.relay.Node,)
-        filter_fields= {
+        filter_fields = {
             "title": ['exact', 'icontains', 'istartswith'],
             "description": ['exact', 'icontains', 'istartswith'],
             "active": ['exact'],
@@ -146,86 +193,140 @@ class NoticeGQLType(DjangoObjectType):
 
 
 class VoucherPaymentGQLType(DjangoObjectType):
-    voucher_image = graphene.String()
+    # insuree_name = graphene.String()
+    # insuree_name = CharFilter(field_name='insuree__othername', lookup_expr='icontains', distinct=True)
     class Meta:
         model = VoucherPayment
         interfaces = (graphene.relay.Node,)
         fields = ["voucher", "voucher_id", "insuree"]
-        filter_fields= {
-            # "insuree": ['exact', 'icontains', 'istartswith'],
+        filter_fields = {
+            # "title" : CharFilter(field_name='insuree__chf_id', lookup_expr='icontains', distinct=True),
+            "insuree__chf_id": ['icontains'],
+            "insuree__other_names" : ['icontains'],
+            "insuree__last_name" : ["icontains"]
             # "voucher_id": ['exact', 'icontains', 'istartswith'],
-           
 
         }
-        @classmethod
-        def resolve_voucher_image(self,info):
-            # print('value_obj',value_obj)
-            if self.voucher:
-                self.voucher = info.context.build_absolute_uri(self.voucher.url)
-            return self.voucher
+        connection_class = ExtendedConnection
+        # @classmethod
+    def resolve_voucher(self, info):
+        # print('value_obj',value_obj)
+        if self.voucher:
+            self.voucher = info.context.build_absolute_uri(self.voucher.url)
+        return self.voucher
+    # def resolve_insuree_name(self, info):
+    #     return self.insuree__name
 
+
+
+
+class HealthFacilityCoordinateGQLType(DjangoObjectType):
+    distance = graphene.Float()
+
+    class Meta:
+        model = HealthFacilityCoordinate
+        interfaces = (graphene.relay.Node,)
+        fields = '__all__'
+
+
+
+class NotificationGQLType(DjangoObjectType):
+    class Meta:
+        model = Notification
+        interfaces = (graphene.relay.Node,)
+        fields = '__all__'
+        filter_fields = {
+            # "insuree": ['exact', 'icontains', 'istartswith'],
+            # "voucher_id": ['exact', 'icontains', 'istartswith'],
+
+        }
+
+    connection_class = ExtendedConnection
+
+
+# class testObjtype(ObjectType):
+#     insuree = graphene.String()
+
+class TemporaryRegGQLType(DjangoObjectType):
+    class Meta:
+        model = InsureeTempReg
+        interfaces = (graphene.relay.Node,)
+        fields = '__all__'
+        filter_fields = {
+
+
+        }
 
         connection_class = ExtendedConnection
 
 
 
-class HealthFacilityCoordinateGQLType(DjangoObjectType):
-    distance=graphene.Float()
-    class Meta:
-        model = HealthFacilityCoordinate
-        interfaces = (graphene.relay.Node,)
-        fields= '__all__'
 
 
 
 
 class Query(graphene.ObjectType):
     password = graphene.String()
-    insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(), dob=graphene.Date())
+    insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(),
+                                  dob=graphene.Date())
     insuree_auth_otp = graphene.Field(InsureeAuthGQLType, chfid=graphene.String(), otp=graphene.String())
-    insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
+    # insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.Int())
+    insuree_profile = graphene.Field(InsureeProfileGQLType, insureeCHFID=graphene.String())
     insuree_claim = graphene.List(InsureeClaimGQLType, claimId=graphene.Int())
-    
+    notifications =  DjangoFilterConnectionField(NotificationGQLType, insureeCHFID=graphene.String())
+
     notice = relay.Node.Field(NoticeGQLType)
     notices = DjangoFilterConnectionField(NoticeGQLType, orderBy=graphene.List(of_type=graphene.String))
-    voucher_payments = DjangoFilterConnectionField(VoucherPaymentGQLType, orderBy=graphene.List(of_type=graphene.String), image_url=graphene.String())
 
-    
+    feedback = relay.Node.Field(FeedbackAppGQLType)
+    feedbacks = DjangoFilterConnectionField(FeedbackAppGQLType, orderBy=graphene.List(of_type=graphene.String))
+
+    tempreg = relay.Node.Field(TemporaryRegGQLType)
+    tempregs = DjangoFilterConnectionField(TemporaryRegGQLType, orderBy=graphene.List(of_type=graphene.String))
+
+    profile = graphene.Field(ProfileGQLType, insureeCHFID=graphene.String())
+
+    voucher_payments = DjangoFilterConnectionField(VoucherPaymentGQLType,
+                                                   orderBy=graphene.List(of_type=graphene.String),
+                                                   image_url=graphene.String())
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
-    health_facility_coordinate=graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(), inputLongitude=graphene.Decimal() )
+    health_facility_coordinate = graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(),
+                                               inputLongitude=graphene.Decimal())
 
-
-    def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob,  **kwargs):
-        auth=False
-        insuree_auth_obj=None
-        insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).filter(dob=dob).first()        
+    def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob, **kwargs):
+        auth = False
+        insuree_auth_obj = None
+        insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).filter(dob=dob).first()
         if insuree_obj:
-            familty_insuree_obj = insuree_models.Insuree.objects.filter(chf_id=familyHeadCHFID).filter(head=True).first()
+            familty_insuree_obj = insuree_models.Insuree.objects.filter(chf_id=familyHeadCHFID).filter(
+                head=True).first()
             if familty_insuree_obj:
-                if insuree_obj.family==familty_insuree_obj.family:
-                    auth=True
-        if auth==True:
+                if insuree_obj.family == familty_insuree_obj.family:
+                    auth = True
+        if auth == True:
             insuree_auth_obj = InsureeAuth.objects.filter(insuree=insuree_obj).first()
             if not insuree_auth_obj:
                 insuree_auth_obj = InsureeAuth()
                 insuree_auth_obj.insuree = insuree_obj
                 insuree_auth_obj.save()
-                insuree_auth_obj.token = uuid.uuid4().hex[:6].upper() + str(insuree_auth_obj.id) #todo yeslai lamo banaune
+                insuree_auth_obj.token = uuid.uuid4().hex[:6].upper() + str(
+                    insuree_auth_obj.id)  # todo yeslai lamo banaune
             insuree_auth_obj.otp = uuid.uuid4().hex[:4]
+            print(insuree_auth_obj.otp)  # sms/email bata OTP pathaune
             insuree_auth_obj.save()
         if insuree_auth_obj:
-            insuree_auth_obj.token = '' #user lai login garda otp verify agadi token nadine
+            insuree_auth_obj.token = ''  # user lai login garda otp verify agadi token nadine
         return insuree_auth_obj
-    
-    def resolve_insuree_policy(self, info , insureeCHFID):
-        policy_obj = policy_models.Policy.filter()
 
+    def resolve_insuree_policy(self, info, insureeCHFID):
+        policy_obj = policy_models.Policy.filter()
+    def resolve_notifications(self, info, insureeCHFID, **kwargs):
+        print('chfid')
+
+        return Notification.objects.filter(chf_id=insureeCHFID).order_by("-created_at")
 
     def resolve_insuree_claim(self, info, claimId):
         return claim_models.Claim.objects.filter(id=claimId)
-
-
-
 
     def resolve_insuree_auth_otp(self, info, chfid, otp):
         checkotp = InsureeAuth.objects.filter(otp=otp).filter(insuree__chf_id=chfid).first()
@@ -233,26 +334,48 @@ class Query(graphene.ObjectType):
             return checkotp
         return None
 
-    def resolve_insuree_profile(self, info, insureeCHFID,**kwargs):
-        return insuree_models.Insuree.objects.get(id=insureeCHFID)
+    def resolve_insuree_profile(self, info, insureeCHFID, **kwargs):
+        return insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
 
         # if insuree_obj:
         #     return InsureeVerifyGQLType(insuree_obj)
         # return ''
-    def resolve_notices(self, info, **kwargs): 
+
+    def resolve_profile(self, info, insureeCHFID):
+        profile = Profile.objects.filter(insuree__chf_id=insureeCHFID).first()
+        if profile:
+            return profile
+        else:
+            insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
+            print(insuree_obj.__dict__)
+            profile = Profile.objects.create(insuree=insuree_obj, email=insuree_obj.email,phone=insuree_obj.phone)
+        return profile
+
+
+    # @gql_auth_insuree
+    def resolve_notices(self, info, **kwargs):
         orderBy = kwargs.get('orderBy', None)
+        if not orderBy:
+            return Notice.objects.order_by("-created_at")
         return Notice.objects.order_by(*orderBy)
 
-    def resolve_voucher_payments(self, info, **kwargs): 
+    def resolve_feedbacks(self, info, **kwargs):
+        orderBy = kwargs.get('orderBy', None)
+        if not orderBy:
+            return Feedback.objects.order_by("-created_at")
+        return Feedback.objects.order_by(*orderBy)
+
+    def resolve_voucher_payments(self, info, **kwargs):
         orderBy = kwargs.get('orderBy', None)
         return VoucherPayment.objects.order_by(*orderBy)
 
     def generate_token(self):
         token = uuid.uuid4().hex[:6].upper()
         return token
-    
+
+    # @gql_auth_insuree
     def resolve_health_facility_coordinate(self, info, inputLatitude, inputLongitude):
-        #return HealthFacilityCoordinate.objects.all()
+        # return HealthFacilityCoordinate.objects.all()
         return get_qs_nearby_hfcoord(inputLatitude, inputLongitude, None)
         pass
 
@@ -262,9 +385,9 @@ class Mutation(graphene.ObjectType):
     update_notice = UpdateNoticeMutation.Field()
     delete_notice = DeleteNoticeMutation.Field()
     create_voucher_payment = CreateVoucherPaymentMutation.Field()
+    create_feedback = CreateFeedbackMutation.Field()
+    update_profile = CreateOrUpdateProfileMutation.Field()
+    create_temporary_insuree = CreateTempRegInsureeMutation.Field()
+    create_insuree_mutation_from_temp = CreateInsureeMutation.Field()
 
-    
-
-
-
-
+# schema = graphene.Schema(query=Query, mutation=Mutation)
