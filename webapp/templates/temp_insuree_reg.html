@@ -373,16 +373,14 @@
             GuiSubmit(){
                 var sendData = this.Model;
                 var reqUrl = this.getUrl("/api/graphql");
-  
-                // var strData = JSON.stringify( {"bla":"5"} )
-                var strData = JSON.stringify( sendData )
+                var strData = JSON.stringify( sendData ); // JSON.stringify( {"bla":"5"} );
                 console.log(strData);
                 $.ajax({
                     url: reqUrl,
                     type: 'POST',
                     data:  JSON.stringify({
                         query: `mutation {
-                            createTemporaryInsuree(jeson:${JSON.stringify(strData)}){
+                            createTemporaryInsuree(json:${JSON.stringify(strData)}){
                                 ok
                             }
                             }`
@@ -392,12 +390,11 @@
                     contentType: 'application/json; charset=utf-8',
                     success: function (response) {
                         console.log(response);
-                        thisRef.ResponseObj = response;
                     }
                 }); //end ajax                 
             },
             getLocation(args){
-                var reqUrl = this.getUrl("/api/graphql");//var reqUrl = "http://oi.tinker.com.np/api/graphql";
+                var reqUrl = this.getUrl("/api/graphql"); //"http://oi.tinker.com.np/api/graphql";
                 var id=args.id ? args.id : '';
                 var type=args.type ? args.type: '';
                 var parent_Id=args.parent_Id ? args.parent_Id:'';

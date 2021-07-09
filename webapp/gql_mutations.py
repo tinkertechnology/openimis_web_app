@@ -249,12 +249,12 @@ import base64
 from insuree.schema import  InsureeGQLType
 class CreateTempRegInsureeMutation(graphene.Mutation):
     class Arguments:
-        jeson = graphene.JSONString()
+        json = graphene.JSONString()
     ok = graphene.Boolean()
     @classmethod
     def mutate(self, info, cls, **kwargs):
         print(kwargs)
-        InsureeTempReg.objects.create(json=kwargs['jeson'])
+        InsureeTempReg.objects.create(json=kwargs['json'])
         return CreateTempRegInsureeMutation(ok=True)
 
 import json
