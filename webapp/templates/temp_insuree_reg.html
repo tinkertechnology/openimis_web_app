@@ -340,12 +340,16 @@
             }
         }, //end data
         created() {
+            console.log('created');
             this.Model.ExistingInsuree = JSON.parse(JSON.stringify(this.OrgExistingInsuree));
             this.Model.Family = JSON.parse(JSON.stringify(this.OrgFamily));
             this.getRegions();
             this.GuiNewInsuree();
-            this.GetInsureeTempDetails();
-            console.log("baaje")
+
+            var id=this.getUrlParameter('id');
+            if(id){
+                this.GetInsureeTempDetails(id);
+            }
         },
         mounted() {
 
@@ -381,34 +385,30 @@
                     readURL(this);
                 });
             },
-
-            GetInsureeTempDetails(){
-            var thisRef = this;
-            var reqUrl = "/api/graphql";
-            console.log("pappu")
-            $.ajax({
-                url: reqUrl,
-                type: 'POST',
-                data:  JSON.stringify({
-                    query: `
-                        {
-                          tempreg(id: "VGVtcG9yYXJ5UmVnR1FMVHlwZToxMDE1"){
-                            json
-                          }
-                        }
-                    `
-
-            }),//strData,
-                dataType: 'json',
-                contentType: 'application/json; charset=utf-8',
-                success: function (response) {
-                    //console.log(response);
-                   var json_data = JSON.parse(response.data.tempreg.json);
-                   Vue.set(thisRef, "Model", json_data);
-                }
-            }); //end ajax
-        },
-
+            GetInsureeTempDetails(id){
+                var thisRef = this;
+                var reqUrl = "/api/graphql";
+                console.log("pappu")
+                $.ajax({
+                    url: reqUrl,
+                    type: 'POST',
+                    data:  JSON.stringify({
+                        query: `{
+                            tempreg(id: "${id}"){
+                                #id: VGVtcG9yYXJ5UmVnR1FMVHlwZToxMDE1
+                                json
+                            }
+                        }`
+                }),//strData,
+                    dataType: 'json',
+                    contentType: 'application/json; charset=utf-8',
+                    success: function (response) {
+                        //console.log(response);
+                    var json_data = JSON.parse(response.data.tempreg.json);
+                    Vue.set(thisRef, "Model", json_data);
+                    }
+                }); //end ajax
+            },
             GuiSubmit(){
                 var sendData = this.Model;
                 var reqUrl = this.getUrl("/api/graphql");
@@ -419,11 +419,10 @@
                     type: 'POST',
                     data:  JSON.stringify({
                         query: `mutation {
-                            createTemporaryInsuree(json:${JSON.stringify(strData)}){
-                                ok
-                            }
+                                createTemporaryInsuree(json:${JSON.stringify(strData)}){
+                                    ok
+                                }
                             }`
-                    
                 }),//strData,
                     dataType: 'json',
                     contentType: 'application/json; charset=utf-8',
@@ -432,21 +431,23 @@
                     }
                 }); //end ajax                 
             },
-                GuiApprove(){
+            GuiApprove(){
+                var id=this.getUrlParameter('decodeId');
+                if(!id){
+                    alert('no id');
+                }
 
                 var reqUrl = this.getUrl("/api/graphql");
-
                 $.ajax({
                     url: reqUrl,
                     type: 'POST',
                     data:  JSON.stringify({
                         query: `mutation {
-                            createInsureeMutationFromTemp(id:"1015"){
-                                  ok
-                                  message
-                              }
+                            createInsureeMutationFromTemp(id:"${id}"){
+                                    ok
+                                    message
+                                }
                             }`
-
                 }),//strData,
                     contentType: 'application/json; charset=utf-8',
                     success: function (response) {
@@ -454,7 +455,6 @@
                     }
                 }); //end ajax
             },
-
             getLocation(args){
                 var reqUrl = this.getUrl("/api/graphql"); //"http://oi.tinker.com.np/api/graphql";
                 var id=args.id ? args.id : '';
@@ -468,11 +468,11 @@
                         query {
                             locations(id:"${id}", type:"${type}", parent_Id:"${parent_Id}"){
                                 edges{
-                                  node{
+                                    node{
                                     id,
                                     type,
                                     name
-                                  }
+                                    }
                                 }
                             }
                         }`
@@ -533,12 +533,12 @@
                                 alert(
                                     "The dimensions of image is : " + this.width + "x" + this.height +
                                     "! Only " + allowedHeight + "X" + allowedWidth +  " is allowed!"
-                               );                        
+                                );                        
                             }
                             else
                             {
                                 //set image if dimension match
-                               // $('#imgInsuree'+index).attr('src', e.target.result);
+                                // $('#imgInsuree'+index).attr('src', e.target.result);
                                 //Insuree["B64Photo"]=e.target.result; //not responsive but there is value set
                                 Vue.set(Insuree, 'B64Photo', e.target.result);
                             }
