@@ -253,7 +253,7 @@ class TemporaryRegGQLType(DjangoObjectType):
         interfaces = (graphene.relay.Node,)
         fields = '__all__'
         filter_fields = {
-
+            "id" : ["exact"]
 
         }
 
@@ -378,7 +378,9 @@ class Query(graphene.ObjectType):
         # return HealthFacilityCoordinate.objects.all()
         return get_qs_nearby_hfcoord(inputLatitude, inputLongitude, None)
         pass
-
+    # def resolve_tempreg(self, id):
+    #     print("terobau")
+    #     return InsureeTempReg.objects.filter(pk=id).first()
 
 class Mutation(graphene.ObjectType):
     create_notice = CreateNoticeMutation.Field()

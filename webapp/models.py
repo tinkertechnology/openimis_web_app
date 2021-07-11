@@ -87,6 +87,15 @@ class InsureeTempReg(models.Model):
     updated_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
 
 
+class ChfidTempInsuree(models.Model):
+    chfid = models.CharField(max_length=100)
+    is_approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
+    updated_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
+
+    def __str__(self):
+        return self.chfid
+
 # class FamilyTable(models.Model):
 #     """
 #     When there is a policy renewal in progress, there might also be a need to update the picture or something else.

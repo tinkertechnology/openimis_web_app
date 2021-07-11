@@ -187,20 +187,7 @@ class CreateNoticeMutation(OpenIMISMutation):#graphene.relay.ClientIDMutation):
         return CreateNoticeMutation(notice=notice)
 
 
-# class UpdateNoticeMutation(graphene.Mutation):
-#     class Arguments:
-#         id = graphene.Int(required=True)
-#         title = graphene.String(required=False,)
-#         description = graphene.String(required=False)
-#     notice = graphene.Field(NoticeType)
-    
-#     def mutate(self, info,cls, **input):
-#         try:
-#             notice = Notice.objects.filter(pk=kwargs['id']).first()
-#             notice.update(title=kwargs['title'], description=kwargs['description'])
-#             return UpdateNoticeMutation(notice=notice)
-#         except:
-#             return GraphQLError('The notice you are updating might not exist anymore')
+
 
 class UpdateNoticeMutation(OpenIMISMutation):
     notice = graphene.Field(NoticeType)
@@ -307,16 +294,19 @@ def process_photo(args):
     insuree_save=args.get('insuree_save')
     photo=insuree_save.get('B64Photo') # dbg_tmp_insuree_photo()
     print( dir(insuree_models) )
-    modelPhoto = insuree_models.InsureePhoto.objects.create(**{
+    modelPhoto = insuree_models.Photo.objects.create(**{
         #"insuree_id":insuree_save.get('InsureeId'),
         "folder": 'jpt',
         "filename": 'jpt.jpg',
         "officer_id":3, #todo
         "date": '2018-03-28', #todo
+        "validity_from": "2018-03-28",
     })
-    if photo:
+    if photo and False:
         save_path="/Users/abc"
-        image_data = base64.b64decode(photo) 
+        img = photo.split(',')[1]
+        image_data = base64.b64decode(img)
+
         image_result = open('deer_decode.jpg', 'wb')
         final_image = image_result.write(image_data)
         print(final_image)
@@ -360,30 +350,39 @@ SELECT TOP 10 * FROM tblInsuree ORDER BY insureeId DESC;
 SELECT TOP 10 * FROM tblPhotos ORDER BY PhotoId DESC;
 sp_help tblPhotos
 """
+from .models import ChfidTempInsuree
 class CreateInsureeMutation(graphene.Mutation):
     class Arguments:
         id = graphene.String()
     ok = graphene.Boolean()
+    message = graphene.String()
     @classmethod
     def mutate(self, info, cls, **kwargs):
         dfprint('CreateInsureeMutation mutate')
-        pk=kwargs['id'] # access Arguments
-        temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
-        str_json = temp_insuree.json
-        json_dict = json.loads(str_json) #dbg_tmp_insuree_json()
+
         try:
+            pk = kwargs['id']  # access Arguments
+            temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
+            str_json = temp_insuree.json
+            json_dict = json.loads(str_json)  # dbg_tmp_insuree_json()
             family_id=process_family({'json_dict': json_dict})
             if family_id:
                 insurees_from_form = json_dict.get("Insurees")
                 for insuree_save in insurees_from_form:
                     photo_id = process_photo({'insuree_save': insuree_save})
                     insuree_id = process_insuree({'insuree_save': insuree_save, 'photo_id': photo_id, 'family_id': family_id})
-                    insuree_models.InsureePhoto.objects.filter(pk=photo_id).update(**{"insuree_id": insuree_id})
+                    insuree_models.Photo.objects.filter(pk=photo_id).update(**{"insuree_id": insuree_id})
+                    chfif_assign = ChfidTempInsuree.objects.filter(is_approved=False).first()
+                    if not chfif_assign:
+                        message = "CHFID hal aba sakyo"
+                    chfif_assign.is_approved = True
+                    chfif_assign.save()
+                    insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
         except Exception as e:
             print(e)
             import traceback
             traceback.print_exc()
-            return CreateInsureeMutation(ok=False)
+            return CreateInsureeMutation(ok=False, message=message)
             #raise
         return CreateInsureeMutation(ok=True)
 

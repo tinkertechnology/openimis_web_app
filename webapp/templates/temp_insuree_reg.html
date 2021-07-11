@@ -22,6 +22,7 @@
 <body>
 
 <div id="jpt">
+
     <div class="container mt-4">
         <div class="header">
             <div class="row mb-3">
@@ -84,6 +85,7 @@
                     </div>
 
                     <button type="button" class="btn btn-primary my-4" @click="GuiSubmit">Submit</button>
+                    <button type="button" class="btn btn-success my-4" @click="GuiApprove">Approve</button>
                 </div>
             </div>
 
@@ -132,7 +134,7 @@
                                     <label for="dob" class="form-label">Date of Birth</label>
                                     <input type="text" class="form-control" id="dob" placeholder="dob" v-model="Insuree.DOB">
                                 </div>
-                                <div class="col-md-1 col-sm-6 mt-3">
+                                <div class="col-md-1 col-sm-6 mt-3" v-if="index==0">
                                     <label for="isHead" class="form-check-label">IsHead</label>
                                     <input type="checkbox" class="form-check-input" id="isHead" v-model="Insuree.IsHead" >
                                 </div>
@@ -228,7 +230,8 @@
                                         
                                         <input accept="image/x-png,image/gif,image/jpeg" class="form-control inputInsureePhoto" id="ImageFile" name="ImageFile" type="file" value="" @change="e => readURL(e,index,Insuree)"/>
                                         <span class="field-validation-valid" data-valmsg-for="ImageFile" data-valmsg-replace="true"></span>
-                                        <img :id="'imgInsuree'+index" class="img-responsive" style="width:250px;">
+                                        <img :id="'imgInsuree'+index" :src="Insuree.B64Photo" class="img-responsive" style="width:250px;">
+
                                     </div>
                                 </div>
 
@@ -292,6 +295,7 @@
                 "ConfirmationNo": "",
                 "ConfirmationType": ""
             },
+            json_data:"",
             "OrgInsuree":{
                 //"InsureeID": "",
                 //"InsureeUUID": "",
@@ -340,9 +344,11 @@
             this.Model.Family = JSON.parse(JSON.stringify(this.OrgFamily));
             this.getRegions();
             this.GuiNewInsuree();
+            this.GetInsureeTempDetails();
+            console.log("baaje")
         },
         mounted() {
-  
+
         },
         methods: {
             getUrlParameter(sParam) {
@@ -360,7 +366,12 @@
                 }
             },
             getUrl(url){
-                return this.getUrlParameter('server')+url;
+                var u = this.getUrlParameter('server');
+                if(u)
+                {
+                    return u+url;
+                }
+                return url;
             },
             GuiNewInsuree(){
                 this.Model.Insurees.push(
@@ -370,6 +381,34 @@
                     readURL(this);
                 });
             },
+
+            GetInsureeTempDetails(){
+            var thisRef = this;
+            var reqUrl = "/api/graphql";
+            console.log("pappu")
+            $.ajax({
+                url: reqUrl,
+                type: 'POST',
+                data:  JSON.stringify({
+                    query: `
+                        {
+                          tempreg(id: "VGVtcG9yYXJ5UmVnR1FMVHlwZToxMDE1"){
+                            json
+                          }
+                        }
+                    `
+
+            }),//strData,
+                dataType: 'json',
+                contentType: 'application/json; charset=utf-8',
+                success: function (response) {
+                    //console.log(response);
+                   var json_data = JSON.parse(response.data.tempreg.json);
+                   Vue.set(thisRef, "Model", json_data);
+                }
+            }); //end ajax
+        },
+
             GuiSubmit(){
                 var sendData = this.Model;
                 var reqUrl = this.getUrl("/api/graphql");
@@ -393,6 +432,29 @@
                     }
                 }); //end ajax                 
             },
+                GuiApprove(){
+
+                var reqUrl = this.getUrl("/api/graphql");
+
+                $.ajax({
+                    url: reqUrl,
+                    type: 'POST',
+                    data:  JSON.stringify({
+                        query: `mutation {
+                            createInsureeMutationFromTemp(id:"1015"){
+                                  ok
+                                  message
+                              }
+                            }`
+
+                }),//strData,
+                    contentType: 'application/json; charset=utf-8',
+                    success: function (response) {
+                        console.log(response);
+                    }
+                }); //end ajax
+            },
+
             getLocation(args){
                 var reqUrl = this.getUrl("/api/graphql"); //"http://oi.tinker.com.np/api/graphql";
                 var id=args.id ? args.id : '';
@@ -476,7 +538,7 @@
                             else
                             {
                                 //set image if dimension match
-                                $('#imgInsuree'+index).attr('src', e.target.result);
+                               // $('#imgInsuree'+index).attr('src', e.target.result);
                                 //Insuree["B64Photo"]=e.target.result; //not responsive but there is value set
                                 Vue.set(Insuree, 'B64Photo', e.target.result);
                             }
