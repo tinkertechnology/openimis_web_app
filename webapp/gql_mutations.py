@@ -266,6 +266,7 @@ def process_family(args):
     json_dict = args.get('json_dict')
     family_save = json_dict.get("Family")
 
+
     chfid = None
     family_id=None
     if json_dict.get("ExistingInsuree"):
@@ -274,15 +275,21 @@ def process_family(args):
         if family:
             family_id = family.family.id            
     if not family_id:
+        print('familty-dict',insuree_models.Family().__dict__)
+        print('family-save',family_save)
         insuree_ = insuree_models.Insuree.objects.all().first()
         family_create = {
-            "head_insuree_id" : 1,
-            #"location" : ""
-            #"family_type_id": None,
-            #"address": ,
-            #"ethnicity" : "noob",
-            "validity_from" : "2020-01-01",
+            "head_insuree_id" : insuree_.pk,
+            "location_id" : 1,
+            "poverty": family_save.get('Poverty', False),
+            "family_type_id": family_save.get("FamilyType", None),
+            "address": family_save.get("FamilyAddress"),
+            "ethnicity" : family_save.get("Ethnicity"),
+            # "validity_from" : "2020-01-01",
             "audit_user_id" : 1,
+            "is_offline" : True,
+            "confirmation_no" : None,
+            "confirmation_type_id": None,
 
         }
         family_create["head_insuree_id"] = insuree_.id
@@ -321,13 +328,19 @@ def process_insuree(args):
     insuree_create = {
         "last_name" : insuree_save.get("LastName", None),
         "other_names" : insuree_save.get("OtherNames", None),
-        # "gender_id": insuree_save.get("Gender", 1),
-        #"martial": insuree_save.get("Martial", None),
-        #"chf_id" : insuree_save.get("CHFID", None),
-        "dob" : dob,
-        "head" : True, #insuree_save.get("IsHead", False),
-        #"passport" : insuree_save.get("passport", None),
-        "validity_from" : "2020-01-01",
+        "dob" : insuree_save.get("DOB"),
+        "gender_id" : insuree_save.get("Gender"),
+        "marital" : insuree_save.get("Marital"),
+        "head": insuree_save.get("IsHead", False),
+        "passport" : insuree_save.get("passport", 0),
+        "phone":insuree_save.get("Phone"),
+        "email" : insuree_save.get("Email"),
+        "relationship_id": insuree_save.get("Relationship"),
+        "education_id": insuree_save.get("Education"),
+        "current_address": insuree_save.get("CurrentAddress"),
+        "current_village": fbis64(insuree_save.get("VillId")), #base64
+        "profession_id" : insuree_save.get("Profession"),
+        # "validity_from" : "2020-01-01",
         "card_issued" : False,
         "audit_user_id": 1,
         'photo_id': photo_id,
@@ -359,9 +372,9 @@ class CreateInsureeMutation(graphene.Mutation):
     @classmethod
     def mutate(self, info, cls, **kwargs):
         dfprint('CreateInsureeMutation mutate')
-
         try:
             pk = kwargs['id']  # access Arguments
+            print('pkkk',pk)
             temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
             str_json = temp_insuree.json
             json_dict = json.loads(str_json)  # dbg_tmp_insuree_json()
@@ -376,7 +389,7 @@ class CreateInsureeMutation(graphene.Mutation):
                     if not chfif_assign:
                         message = "CHFID hal aba sakyo"
                     chfif_assign.is_approved = True
-                    chfif_assign.save()
+                    # chfif_assign.save()
                     insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
         except Exception as e:
             print(e)
