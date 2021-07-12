@@ -256,7 +256,7 @@ import json
 
 def mdlInsureePhoto():
     mdl=None
-    if 'Photo' in dir(insuree_models): mdl=Insuree.Photo
+    if 'Photo' in dir(insuree_models): mdl=insuree_models.Photo
     if not mdl: mdl = insuree_models.InsureePhoto 
     return mdl 
 
@@ -284,24 +284,24 @@ def process_family(args):
             family_id = family.family.id            
     if not family_id:
         print('familty-dict',insuree_models.Family().__dict__)
-        # print('family-save',family_save)
+        print('family-save',family_save)
         insuree_ = insuree_models.Insuree.objects.all().first()
         family_create = {
             "head_insuree_id" : insuree_.pk,
-            "location_id" : 1,
+            # "location_id" : 1,
             "poverty": family_save.get('Poverty', False),
-            "family_type_id": 'C',#family_save.get('C'),
+            "family_type_id":family_save.get('FamilyType', "C"),
             "address": family_save.get("FamilyAddress"),
             "ethnicity" : family_save.get("Ethnicity"),
             "validity_from" : "2020-01-01",
             "audit_user_id" : 1,
             "is_offline" : True,
-            "confirmation_no" : None,
-            "confirmation_type_id": None,
+            # "confirmation_no" : None,
+            # "confirmation_type_id": None,
 
         }
         family_create["head_insuree_id"] = insuree_.id
-        print('familty-save', family_create)
+        print('familty-save-after', family_create)
         family =insuree_models.Family.objects.create(**family_create)
         family_id = family.id
     return family_id
@@ -351,7 +351,7 @@ def process_insuree(args):
         "dob" : insuree_save.get("DOB"),
         "gender_id" : insuree_save.get("Gender"),
         "marital" : insuree_save.get("Marital"),
-        "head": insuree_save.get("IsHead", False),
+        "head": insuree_save.get("IsHead") if insuree_save.get('IsHead') else False,
         "passport" : insuree_save.get("passport", 0),
         "phone":insuree_save.get("Phone"),
         "email" : insuree_save.get("Email"),
@@ -394,7 +394,6 @@ class CreateInsureeMutation(graphene.Mutation):
         dfprint('CreateInsureeMutation mutate')
         try:
             pk = kwargs['id']  # access Arguments
-            print('pkkk',pk)
             temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
             str_json = temp_insuree.json
             json_dict = json.loads(str_json)  # dbg_tmp_insuree_json()
@@ -412,6 +411,8 @@ class CreateInsureeMutation(graphene.Mutation):
                         chfif_assign.is_approved = True
                         # chfif_assign.save()
                         insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
+                        temp_insuree.is_approved = True
+                        temp_insuree.save()
         except Exception as e:
             print(e)
             import traceback

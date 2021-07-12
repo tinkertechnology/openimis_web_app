@@ -251,9 +251,10 @@ class TemporaryRegGQLType(DjangoObjectType):
     class Meta:
         model = InsureeTempReg
         interfaces = (graphene.relay.Node,)
-        fields = '__all__'
+        fields = ["id", "json", "created_at", "updated_at", "is_approved"]
         filter_fields = {
-            "id" : ["exact"]
+            "id" : ["exact"],
+            "is_approved" : ["exact"]
 
         }
 
