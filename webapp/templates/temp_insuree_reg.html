@@ -360,7 +360,8 @@
             }
         },
         mounted() {
-
+            //for dbg
+            window.submits=this.GuiSubmit;
         },
         methods: {
             getUrlParameter(sParam) {
@@ -397,6 +398,7 @@
                 return valid;
             },
             validateInsuree(Insuree){
+                console.log('validateInsuree');
             	for(var k in this.OrgInsuree){
             		var curr = this.OrgInsuree[k]; 
             		if(typeof curr === 'object' && curr !== null) {
