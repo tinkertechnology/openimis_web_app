@@ -276,16 +276,16 @@ def process_family(args):
             family_id = family.family.id            
     if not family_id:
         print('familty-dict',insuree_models.Family().__dict__)
-        print('family-save',family_save)
+        # print('family-save',family_save)
         insuree_ = insuree_models.Insuree.objects.all().first()
         family_create = {
             "head_insuree_id" : insuree_.pk,
             "location_id" : 1,
             "poverty": family_save.get('Poverty', False),
-            "family_type_id": family_save.get("FamilyType", None),
+            "family_type_id": 'C',#family_save.get('C'),
             "address": family_save.get("FamilyAddress"),
             "ethnicity" : family_save.get("Ethnicity"),
-            # "validity_from" : "2020-01-01",
+            "validity_from" : "2020-01-01",
             "audit_user_id" : 1,
             "is_offline" : True,
             "confirmation_no" : None,
@@ -293,6 +293,7 @@ def process_family(args):
 
         }
         family_create["head_insuree_id"] = insuree_.id
+        print('familty-save', family_create)
         family =insuree_models.Family.objects.create(**family_create)
         family_id = family.id
     return family_id
