@@ -96,6 +96,12 @@ class ChfidTempInsuree(models.Model):
     def __str__(self):
         return self.chfid
 
+class Config(models.Model):
+    key = models.CharField(max_length=150)
+    value = models.CharField(max_length=1500)
+    def __str__(self):
+        return self.chfid
+
 # class FamilyTable(models.Model):
 #     """
 #     When there is a policy renewal in progress, there might also be a need to update the picture or something else.
