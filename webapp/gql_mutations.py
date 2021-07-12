@@ -309,15 +309,18 @@ def process_photo(args):
         "date": '2018-03-28', #todo
         "validity_from": "2018-03-28",
     })
-    if photo and False:
+    if photo: # and False:
         save_path="/Users/abc"
         cfg=insuree_models.Config.objects.filter(key='InsureeImageDir').first()
         if cfg:
             save_path=cfg.value
-        prefix,img = photo.split(',')
+        img_type,img = photo.split(',')
         image_data = base64.b64decode(img)
+        
+        s=img_type #'data:image/jpeg;base64'
+        img_name=s[5:s.index(';')].replace('/','.')
 
-        image_result = open('deer_decode.jpg', 'wb')
+        image_result = open(img_name, 'wb')
         final_image = image_result.write(image_data)
         print(final_image)
     return modelPhoto.pk   
