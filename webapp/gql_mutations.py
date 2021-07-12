@@ -13,6 +13,8 @@ def dfprint(i):
 
 # format base64 id string
 def fbis64(inp):
+    if not inp:
+        return inp
     dfprint('fbis64')
     # NoticeGQLType:38
     # 
@@ -43,7 +45,7 @@ def fbis64(inp):
 # from product.models import ProductItemOrService
 
 # logger = logging.getLogger(__name__)
-from .models import Notice, VoucherPayment, Feedback
+from .models import Notice, VoucherPayment, Feedback, Config
 from graphene_django import DjangoObjectType
 from graphene import Connection, Int
 from insuree import models as insuree_models
@@ -252,6 +254,12 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
 
 import json
 
+def mdlInsureePhoto():
+    mdl=None
+    if 'Photo' in dir(insuree_models): mdl=Insuree.Photo
+    if not mdl: mdl = insuree_models.InsureePhoto 
+    return mdl 
+
 def dbg_tmp_insuree_json():
     return { 
         "ExistingInsuree": { "CHFID": "200" },
@@ -297,11 +305,15 @@ def process_family(args):
         family_id = family.id
     return family_id
 
+
 def process_photo(args):
+    dfprint('process_photo')
     insuree_save=args.get('insuree_save')
     photo=insuree_save.get('B64Photo') # dbg_tmp_insuree_photo()
-    print( dir(insuree_models) )
-    modelPhoto = insuree_models.Photo.objects.create(**{
+    #print( insuree_models.__dict__ )
+
+    
+    modelPhoto = mdlInsureePhoto().objects.create(**{
         #"insuree_id":insuree_save.get('InsureeId'),
         "folder": 'jpt',
         "filename": 'jpt.jpg',
@@ -311,7 +323,7 @@ def process_photo(args):
     })
     if photo: # and False:
         save_path="/Users/abc"
-        cfg=insuree_models.Config.objects.filter(key='InsureeImageDir').first()
+        cfg=Config.objects.filter(key='InsureeImageDir').first()
         if cfg:
             save_path=cfg.value
         img_type,img = photo.split(',')
@@ -319,7 +331,8 @@ def process_photo(args):
         
         s=img_type #'data:image/jpeg;base64'
         img_name=s[5:s.index(';')].replace('/','.')
-
+        import time;
+        img_name+=str(time.time())+img_name
         image_result = open(img_name, 'wb')
         final_image = image_result.write(image_data)
         print(final_image)
@@ -390,13 +403,14 @@ class CreateInsureeMutation(graphene.Mutation):
                 for insuree_save in insurees_from_form:
                     photo_id = process_photo({'insuree_save': insuree_save})
                     insuree_id = process_insuree({'insuree_save': insuree_save, 'photo_id': photo_id, 'family_id': family_id})
-                    insuree_models.Photo.objects.filter(pk=photo_id).update(**{"insuree_id": insuree_id})
+                    mdlInsureePhoto().objects.filter(pk=photo_id).update(**{"insuree_id": insuree_id})
                     chfif_assign = ChfidTempInsuree.objects.filter(is_approved=False).first()
                     if not chfif_assign:
                         message = "CHFID hal aba sakyo"
-                    chfif_assign.is_approved = True
-                    # chfif_assign.save()
-                    insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
+                    else:
+                        chfif_assign.is_approved = True
+                        # chfif_assign.save()
+                        insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
         except Exception as e:
             print(e)
             import traceback
