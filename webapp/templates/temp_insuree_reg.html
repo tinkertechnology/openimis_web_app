@@ -49,9 +49,10 @@
                 <div class="row">
                     <div class="card">
                         <div class="card-body">
-                            <h4 class="card-title mb-3">Family with existing Insuree</h4>
+                            
 
-                            <div class="col-md-12 col-sm-12 mb-3">
+                            <div class="col-md-12 col-sm-12 mb-3" style="display:none">
+                            	<h4 class="card-title mb-3">Family with existing Insuree</h4>
                                 <label for="firstName" class="form-label">CHFID</label>
                                 <input type="text" class="form-control" id="chfid_id" placeholder="Insurance Number" v-model="Model.ExistingInsuree.CHFID" >
                             </div>
@@ -85,8 +86,8 @@
                         </div>        
                     </div>
 
-                    <button type="button" class="btn btn-primary my-4" @click="GuiSubmit">Submit</button>
-                    <button type="button" class="btn btn-success my-4" @click="GuiApprove">Approve</button>
+                    <button type="button" class="btn btn-primary my-4" @click="GuiSubmit" v-if="!IsApproveAllowed()">Submit</button>
+                    <button type="button" class="btn btn-success my-4" @click="GuiApprove" v-if="IsApproveAllowed()">Approve</button>
                 </div>
             </div>
 
@@ -302,10 +303,10 @@
                 //"InsureeUUID": "",
                 //"FamilyID": "",
                 //"CHFID": "",
-                "LastName": "",
+                "LastName": {val:"", req:1},
                 "OtherNames": "",
-                "DOB": "",
-                "Gender": "",
+                "DOB": {val:"", req:1},
+                "Gender": {val:"", req:1},
                 "Marital": "",
                 "IsHead": "",
                 "passport": "",
@@ -320,20 +321,22 @@
                 "LegacyID": "",
                 //"AuditUserID": "",
                 //"RowID": "",
-                "Relationship": "",
+                "Relationship": {val:"", req:1},
                 "Profession": "",
                 "Education": "",
                 "Email": "",
                 //"isOffline": "",
                 //"TypeOfId": "",
                 //"HFID": "",
-                "CurrentAddress": "",
+                "CurrentAddress": {val:"", req:1},
 
                 //"Geolocation": "",
                 //"CurrentVillage": ""    
 
                 "RegionId":"",             
             },
+            "Id":0,
+            "decodeId":"",
             Model: {
                 "ExistingInsuree":{},
                 "Family": {},
@@ -351,9 +354,14 @@
             if(id){
                 this.GetInsureeTempDetails(id);
             }
+            var decodeId=this.getUrlParameter('decodeId');
+            if(decodeId){
+                this.decodeId=decodeId;
+            }
         },
         mounted() {
-
+            //for dbg
+            window.submits=this.GuiSubmit;
         },
         methods: {
             getUrlParameter(sParam) {
@@ -366,7 +374,7 @@
                     sParameterName = sURLVariables[i].split('=');
 
                     if (sParameterName[0] === sParam) {
-                        return sParameterName[1] === undefined ? true : sParameterName[1];
+                        return sParameterName[1] === undefined ? true : sParameterName.slice(1).join('=');//base64 == fix
                     }
                 }
             },
@@ -378,9 +386,59 @@
                 }
                 return url;
             },
+            IsApproveAllowed(){
+                if(this.decodeId){
+                    return true;
+                }
+                return false;
+            },
+            validateFamily(){
+                var valid=true;
+
+                return valid;
+            },
+            validateInsuree(Insuree){
+                console.log('validateInsuree');
+            	for(var k in this.OrgInsuree){
+            		var curr = this.OrgInsuree[k]; 
+            		if(typeof curr === 'object' && curr !== null) {
+            			var req = curr['req'];
+            			if(req==1) {
+            				if(Insuree[k] =="" || Insuree[k]==null){
+            					alert(`Insuree ${k} required`);
+            					return false;
+            				}
+            			}
+            		}
+            	}
+            	return false;
+            },
+            Validate(){
+                var valid=true;
+                var Insurees=this.Model.Insurees;
+                for (var i = 0; i < Insurees.length; i++) {
+                	if(this.validateInsuree(Insurees[i])){
+                		return false;
+                	}
+                }
+                return valid;
+            },
+            GetOrgInsuree(){
+            	var OrgInsuree={};
+            	for(var k in this.OrgInsuree){
+            		var curr = this.OrgInsuree[k]; 
+            		OrgInsuree[k]=curr;
+            		if(typeof curr === 'object' && curr !== null) {
+            			OrgInsuree[k]=curr['val']
+            		}
+            	}
+            	console.log(OrgInsuree);
+            	return OrgInsuree;
+
+            },
             GuiNewInsuree(){
                 this.Model.Insurees.push(
-                    JSON.parse(JSON.stringify(this.OrgInsuree))
+                    JSON.parse(JSON.stringify(this.GetOrgInsuree()))
                 );
                 $(".inputInsureePhoto").unbind('change').change(function () {
                     readURL(this);
@@ -411,6 +469,9 @@
                 }); //end ajax
             },
             GuiSubmit(){
+            	if(!this.Validate()){
+            		return
+            	}
                 var sendData = this.Model;
                 var reqUrl = this.getUrl("/api/graphql");
                 var strData = JSON.stringify( sendData ); // JSON.stringify( {"bla":"5"} );
@@ -419,12 +480,13 @@
                     url: reqUrl,
                     type: 'POST',
                     data:  JSON.stringify({
-                        query: `mutation {
+                        query: `
+                            mutation {
                                 createTemporaryInsuree(json:${JSON.stringify(strData)}){
                                     ok
                                 }
                             }`
-                }),//strData,
+                    }),//strData,
                     dataType: 'json',
                     contentType: 'application/json; charset=utf-8',
                     success: function (response) {
@@ -437,19 +499,19 @@
                 if(!id){
                     alert('no id');
                 }
-
                 var reqUrl = this.getUrl("/api/graphql");
                 $.ajax({
                     url: reqUrl,
                     type: 'POST',
                     data:  JSON.stringify({
-                        query: `mutation {
-                            createInsureeMutationFromTemp(id:"${id}"){
+                        query: `
+                            mutation {
+                                createInsureeMutationFromTemp(id:"${id}"){
                                     ok
                                     message
                                 }
                             }`
-                }),//strData,
+                    }),
                     contentType: 'application/json; charset=utf-8',
                     success: function (response) {
                         console.log(response);
