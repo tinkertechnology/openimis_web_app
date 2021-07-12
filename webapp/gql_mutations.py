@@ -311,7 +311,10 @@ def process_photo(args):
     })
     if photo and False:
         save_path="/Users/abc"
-        img = photo.split(',')[1]
+        cfg=insuree_models.Config.objects.filter(key='InsureeImageDir').first()
+        if cfg:
+            save_path=cfg.value
+        prefix,img = photo.split(',')
         image_data = base64.b64decode(img)
 
         image_result = open('deer_decode.jpg', 'wb')
