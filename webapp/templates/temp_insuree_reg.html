@@ -52,7 +52,7 @@
                             
 
                             <div class="col-md-12 col-sm-12 mb-3" style="display:none">
-                            	<h4 class="card-title mb-3">Family with existing Insuree</h4>
+                            	<h4 class="card-title mb-3" >Family with existing Insuree</h4>
                                 <label for="firstName" class="form-label">CHFID</label>
                                 <input type="text" class="form-control" id="chfid_id" placeholder="Insurance Number" v-model="Model.ExistingInsuree.CHFID" >
                             </div>
@@ -96,6 +96,8 @@
                 <div class="row" v-for="(Insuree,index) in Model.Insurees">
                     <div class="card" style="margin-left: 15px; margin-bottom: 10px;">
                         <div class="card-body">
+                            <h4 class="card-title mb-3" v-if="index==0">Head Insuree</h4>
+                            <h4 class="card-title mb-3" v-if="index!=0">Not Head Insuree</h4>
                             <div class="row">
                                 <div class="col-md-3 col-sm-6">
                                     <label for="region" class="form-label">Region</label>
@@ -139,7 +141,7 @@
                                 </div>
                                 <div class="col-md-1 col-sm-6 mt-3" v-if="index==0">
                                     <label for="isHead" class="form-check-label">IsHead</label>
-                                    <input type="checkbox" class="form-check-input" id="isHead" v-model="Insuree.IsHead" >
+                                    <input type="checkbox" class="form-check-input" id="isHead" v-model="Insuree.IsHead" :disabled="true">
                                 </div>
 
                                 <div class="col-md-3 col-sm-6">
@@ -441,6 +443,9 @@
                 this.Model.Insurees.push(
                     JSON.parse(JSON.stringify(this.GetOrgInsuree()))
                 );
+                if(this.Model.Insurees.length==1){ //IsHead selected for first insuree
+                    this.Model.Insurees[0].IsHead=1;
+                }
                 $(".inputInsureePhoto").unbind('change').change(function () {
                     readURL(this);
                 });
