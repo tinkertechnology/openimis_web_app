@@ -99,33 +99,35 @@
                             <h4 class="card-title mb-3" v-if="index==0">Head Insuree</h4>
                             <h4 class="card-title mb-3" v-if="index!=0">Not Head Insuree</h4>
                             <div class="row">
-                                <div class="col-md-3 col-sm-6">
-                                    <label for="region" class="form-label">Region</label>
-                                    <select v-model="Insuree.RegionId" @change="e=>getDistrict(Insuree)" class="form-select">
-                                        <option v-for="(item,index) in Selects.Regions" :value="item.id">[[item.name]]</option>
-                                    </select>
-                                </div>
+                                <template v-if="index==0">
+                                    <div class="col-md-3 col-sm-6">
+                                        <label for="region" class="form-label">Region</label>
+                                        <select v-model="Insuree.RegionId" @change="e=>getDistrict(Insuree)" class="form-select">
+                                            <option v-for="(item,index) in Selects.Regions" :value="item.id">[[item.name]]</option>
+                                        </select>
+                                    </div>
 
-                                <div class="col-md-3 col-sm-6">
-                                    <label for="district" class="form-label">District</label>
-                                    <select v-model="Insuree.DistrictId" @change="e=>getMun(Insuree)" class="form-select">
-                                        <option v-for="(item,index) in Insuree.SelectDistricts" :value="item.id">[[item.name]]</option>
-                                    </select>
-                                </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <label for="district" class="form-label">District</label>
+                                        <select v-model="Insuree.DistrictId" @change="e=>getMun(Insuree)" class="form-select">
+                                            <option v-for="(item,index) in Insuree.SelectDistricts" :value="item.id">[[item.name]]</option>
+                                        </select>
+                                    </div>
 
-                                <div class="col-md-3 col-sm-6">
-                                    <label for="municipality" class="form-label">Municipality</label>
-                                    <select v-model="Insuree.MunId" @change="e=>getVill(Insuree)" class="form-select">
-                                        <option v-for="(item,index) in Insuree.SelectMuns" :value="item.id">[[item.name]]</option>
-                                    </select>
-                                </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <label for="municipality" class="form-label">Municipality</label>
+                                        <select v-model="Insuree.MunId" @change="e=>getVill(Insuree)" class="form-select">
+                                            <option v-for="(item,index) in Insuree.SelectMuns" :value="item.id">[[item.name]]</option>
+                                        </select>
+                                    </div>
 
-                                <div class="col-md-3 col-sm-6">
-                                    <label for="village" class="form-label">Village</label>
-                                    <select v-model="Insuree.VillId" class="form-select">
-                                        <option v-for="(item,index) in Insuree.SelectVillages" :value="item.id">[[item.name]]</option>
-                                    </select>
-                                </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <label for="village" class="form-label">Village</label>
+                                        <select v-model="Insuree.VillId" class="form-select">
+                                            <option v-for="(item,index) in Insuree.SelectVillages" :value="item.id">[[item.name]]</option>
+                                        </select>
+                                    </div>
+                                </template>
 
                                 <div class="col-md-4 col-sm-6">
                                     <label for="lastName" class="form-label">Last name</label>
@@ -139,7 +141,7 @@
                                     <label for="dob" class="form-label">Date of Birth</label>
                                     <input type="text" class="form-control" id="dob" placeholder="dob" v-model="Insuree.DOB">
                                 </div>
-                                <div class="col-md-1 col-sm-6 mt-3" v-if="index==0">
+                                <div class="col-md-1 col-sm-6 mt-3" v-if="false">
                                     <label for="isHead" class="form-check-label">IsHead</label>
                                     <input type="checkbox" class="form-check-input" id="isHead" v-model="Insuree.IsHead" :disabled="true">
                                 </div>
@@ -173,7 +175,7 @@
                                     <input type="text" class="form-control" id="phone" placeholder="Phone Number" v-model="Insuree.Phone">
                                 </div>
 
-                                <div class="col-md-4 col-sm-6">
+                                <div class="col-md-4 col-sm-6" v-if="index!=0">
                                     <label for="relationshipwithHead" class="form-label">Relationship with Head</label>
                                     <select class="form-select" v-model="Insuree.Relationship">
                                         <option value="0">--Select Relation--</option>
@@ -233,10 +235,21 @@
                                     <label class="control-label col-sm-2"> Image</label>
                                     <div class="controls col-sm-4">
                                         
-                                        <input accept="image/x-png,image/gif,image/jpeg" class="form-control inputInsureePhoto" id="ImageFile" name="ImageFile" type="file" value="" @change="e => readURL(e,index,Insuree)"/>
+                                        <input accept="image/x-png,image/gif,image/jpeg" class="form-control InputFile" id="ImageFile" name="ImageFile" type="file" value="" @change="e => readURL(e,index,Insuree, 'B64Photo')"/>
                                         <span class="field-validation-valid" data-valmsg-for="ImageFile" data-valmsg-replace="true"></span>
                                         <img :id="'imgInsuree'+index" :src="Insuree.B64Photo" class="img-responsive" style="width:250px;">
 
+                                    </div>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="control-label col-sm-2"> PHOTO ID </label>
+                                    <div class="controls col-sm-4">
+                            
+                                        <input accept="image/x-png,image/gif,image/jpeg" class="form-control B64IdPhoto"  type="file" value="" @change="e => readURL(e,index,Insuree,'B64IdPhoto')"/>
+                                        <span class="field-validation-valid" data-valmsg-for="ImageFile" data-valmsg-replace="true"></span>
+                                        <img :src="Insuree.B64IdPhoto" class="img-responsive" style="width:250px;">
+                            
                                     </div>
                                 </div>
 
@@ -250,10 +263,35 @@
                         <button type="button" class="btn btn-primary" @click="GuiNewInsuree">Add new family member</button>
                     </div>
                 </div>
+                <div>
+                    [[ Model.Insurees.length ]]
+                    [[ calulateAmount() ]]
+
+                    <br>
+                    <div class="form-group">
+                        <label class="control-label col-sm-2"> VOUCHER </label>
+                        <div class="controls col-sm-4">
+                
+                            <input accept="image/x-png,image/gif,image/jpeg" class="form-control B64VoucherPhoto"  type="file" value="" @change="e => readURL(e,index,Model,'B64VoucherPhoto')"/>
+                            <span class="field-validation-valid" data-valmsg-for="ImageFile" data-valmsg-replace="true"></span>
+                            <img :src="Model.B64VoucherPhoto" class="img-responsive" style="width:250px;">
+                
+                        </div>
+                    </div>
+
+                    <div class="capcha">
+                        Captcha <br>
+                        <b>[[a]]+[[b]] = ? </b> <br>
+                        <input type="text" v-model="c" >
+                    </div>
+                </div>
+
+
             </div>
         </div>        
     </div>  
-    
+
+
     <div class="container">
         <p>[[ Selects ]]</p>
         <p>[[ Model ]]</p>
@@ -265,6 +303,9 @@
         el: '#jpt',
         delimiters: ['[[', ']]'],
         data: {
+            a : parseInt(Math.random() * 10),
+            b : parseInt(Math.random()*10),
+            c : 0,
             Selects:{
                 "Regions":[],
                 "Locations":[],
@@ -293,8 +334,8 @@
                 //"LegacyID": "",
                 //"AuditUserID": "",
                 //"RowID": "",
-                "FamilyType": "",
-                "FamilyAddress": "",
+                "FamilyType": "H",
+                "FamilyAddress": "Nepal",
                 "isOffline": "",
                 "Ethnicity": "",
                 "ConfirmationNo": "",
@@ -365,6 +406,7 @@
         mounted() {
             //for dbg
             window.submits=this.GuiSubmit;
+            this.generateCaptch();
         },
         methods: {
             getUrlParameter(sParam) {
@@ -416,6 +458,13 @@
             	}
             	return false;
             },
+            calulateAmount(){
+                if(this.Model.Insurees.length <=5){
+                    return 3500;
+                }
+                return (3500+ (this.Model.Insurees.length -5) * 700);
+
+            },
             Validate(){
                 var valid=true;
                 var Insurees=this.Model.Insurees;
@@ -446,14 +495,19 @@
                 if(this.Model.Insurees.length==1){ //IsHead selected for first insuree
                     this.Model.Insurees[0].IsHead=1;
                 }
-                $(".inputInsureePhoto").unbind('change').change(function () {
-                    readURL(this);
-                });
+                else {
+                    var lastInsuree=this.Model.Insurees[this.Model.Insurees.length-1];
+                    var firstInsuree =this.Model.Insurees[0];
+                    lastInsuree.MunId = firstInsuree.MunId;
+                    lastInsuree.RegionId = firstInsuree.RegionId;
+                    lastInsuree.DistrictId = firstInsuree.DistrictId;
+                    lastInsuree.VillId = firstInsuree.VillId;
+                }
+                
             },
             GetInsureeTempDetails(id){
                 var thisRef = this;
                 var reqUrl = "/api/graphql";
-                console.log("pappu")
                 $.ajax({
                     url: reqUrl,
                     type: 'POST',
@@ -474,10 +528,21 @@
                     }
                 }); //end ajax
             },
+            generateCaptch(){
+
+                this.a = parseInt(Math.random() * 10);
+                this.b = parseInt(Math.random() * 10);
+            },
+            
             GuiSubmit(){
             	if(!this.Validate()){
             		return
             	}
+                if(this.c!=this.a+this.b){
+                    this.generateCaptch();
+                    alert("Cpatch Wrong!!");
+                    return;
+                }
                 var sendData = this.Model;
                 var reqUrl = this.getUrl("/api/graphql");
                 var strData = JSON.stringify( sendData ); // JSON.stringify( {"bla":"5"} );
@@ -581,7 +646,7 @@
             getVill(Insuree){
                 this.getLocation({'parent_Id':Insuree.MunId, 'pRef': Insuree, 'cstr': 'SelectVillages'});
             },
-            readURL(evInput, index, Insuree){
+            readURL(evInput, index, Insuree, vModel){
                 console.log('readURL');
                 if (evInput.target.files && evInput.target.files[0]) {
                     var reader = new FileReader();
@@ -609,7 +674,9 @@
                                 //set image if dimension match
                                 // $('#imgInsuree'+index).attr('src', e.target.result);
                                 //Insuree["B64Photo"]=e.target.result; //not responsive but there is value set
-                                Vue.set(Insuree, 'B64Photo', e.target.result);
+                                // Vue.set(Insuree, 'B64Photo', e.target.result);
+                                Vue.set(Insuree, vModel, e.target.result);
+                                
                             }
                             
                         };
