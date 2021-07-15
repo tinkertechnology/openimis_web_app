@@ -1,3 +1,4 @@
+from typing_extensions import Required
 import django
 import uuid
 import graphene
@@ -13,6 +14,7 @@ from graphene_django.filter import DjangoFilterConnectionField
 from .models import InsureeAuth, Notice, HealthFacilityCoordinate
 from graphene_django.registry import Registry
 from .models import  InsureeTempReg
+from django.db.models import Q
 
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
@@ -251,9 +253,10 @@ class TemporaryRegGQLType(DjangoObjectType):
     class Meta:
         model = InsureeTempReg
         interfaces = (graphene.relay.Node,)
-        fields = '__all__'
+        fields = "__all__" #["id", "json", "created_at", "updated_at", "is_approved"]
         filter_fields = {
-            "id" : ["exact"]
+            "id" : ["exact"],
+            "is_approved" : ["exact"]
 
         }
 
@@ -292,6 +295,7 @@ class Query(graphene.ObjectType):
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate = graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(),
                                                inputLongitude=graphene.Decimal())
+    validate_insuree = graphene.Field(TemporaryRegGQLType, card_id=graphene.String(Required=False), phone_number=graphene.String())
 
     def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob, **kwargs):
         auth = False
@@ -378,9 +382,13 @@ class Query(graphene.ObjectType):
         # return HealthFacilityCoordinate.objects.all()
         return get_qs_nearby_hfcoord(inputLatitude, inputLongitude, None)
         pass
-    # def resolve_tempreg(self, id):
-    #     print("terobau")
-    #     return InsureeTempReg.objects.filter(pk=id).first()
+
+    def resolve_validate_insuree(self, info, phone_no, card_id):
+        if InsureeTempReg.objects.filter(Q(phone_number=phone_no | Q(card_id=card_id))):
+            return None
+        else: 
+            return True
+        
 
 class Mutation(graphene.ObjectType):
     create_notice = CreateNoticeMutation.Field()

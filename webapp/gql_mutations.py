@@ -13,6 +13,8 @@ def dfprint(i):
 
 # format base64 id string
 def fbis64(inp):
+    if not inp:
+        return inp
     dfprint('fbis64')
     # NoticeGQLType:38
     # 
@@ -43,7 +45,7 @@ def fbis64(inp):
 # from product.models import ProductItemOrService
 
 # logger = logging.getLogger(__name__)
-from .models import Notice, VoucherPayment, Feedback
+from .models import Notice, VoucherPayment, Feedback, Config
 from graphene_django import DjangoObjectType
 from graphene import Connection, Int
 from insuree import models as insuree_models
@@ -246,11 +248,17 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
         dfprint(str_json)
 
         #InsureeTempReg.objects.create(json=kwargs['json']) #json with single quote save, maybe decoded by JSONString()
-        InsureeTempReg.objects.create(json=str_json)
+        InsureeTempReg.objects.create(json=str_json, card_id=str_json.get('passport'), phone_no=str_json.get("Phone"), name_of_head=str_json.get("OtherNames")+' '+str_json.get("LastName"))
 
         return CreateTempRegInsureeMutation(ok=True)
 
 import json
+
+def mdlInsureePhoto():
+    mdl=None
+    if 'Photo' in dir(insuree_models): mdl=insuree_models.Photo
+    if not mdl: mdl = insuree_models.InsureePhoto 
+    return mdl 
 
 def dbg_tmp_insuree_json():
     return { 
@@ -266,6 +274,7 @@ def process_family(args):
     json_dict = args.get('json_dict')
     family_save = json_dict.get("Family")
 
+
     chfid = None
     family_id=None
     if json_dict.get("ExistingInsuree"):
@@ -274,27 +283,38 @@ def process_family(args):
         if family:
             family_id = family.family.id            
     if not family_id:
+        print('familty-dict',insuree_models.Family().__dict__)
+        print('family-save',family_save)
         insuree_ = insuree_models.Insuree.objects.all().first()
         family_create = {
-            "head_insuree_id" : 1,
-            #"location" : ""
-            #"family_type_id": None,
-            #"address": ,
-            #"ethnicity" : "noob",
+            "head_insuree_id" : insuree_.pk,
+            # "location_id" : 1,
+            "poverty": family_save.get('Poverty', False),
+            "family_type_id":family_save.get('FamilyType', "C"),
+            "address": family_save.get("FamilyAddress"),
+            "ethnicity" : family_save.get("Ethnicity"),
             "validity_from" : "2020-01-01",
             "audit_user_id" : 1,
+            "is_offline" : True,
+            # "confirmation_no" : None,
+            # "confirmation_type_id": None,
 
         }
         family_create["head_insuree_id"] = insuree_.id
+        print('familty-save-after', family_create)
         family =insuree_models.Family.objects.create(**family_create)
         family_id = family.id
     return family_id
 
+
 def process_photo(args):
+    dfprint('process_photo')
     insuree_save=args.get('insuree_save')
     photo=insuree_save.get('B64Photo') # dbg_tmp_insuree_photo()
-    print( dir(insuree_models) )
-    modelPhoto = insuree_models.Photo.objects.create(**{
+    #print( insuree_models.__dict__ )
+
+    
+    modelPhoto = mdlInsureePhoto().objects.create(**{
         #"insuree_id":insuree_save.get('InsureeId'),
         "folder": 'jpt',
         "filename": 'jpt.jpg',
@@ -302,12 +322,19 @@ def process_photo(args):
         "date": '2018-03-28', #todo
         "validity_from": "2018-03-28",
     })
-    if photo and False:
+    if photo: # and False:
         save_path="/Users/abc"
-        img = photo.split(',')[1]
+        cfg=Config.objects.filter(key='InsureeImageDir').first()
+        if cfg:
+            save_path=cfg.value
+        img_type,img = photo.split(',')
         image_data = base64.b64decode(img)
-
-        image_result = open('deer_decode.jpg', 'wb')
+        
+        s=img_type #'data:image/jpeg;base64'
+        img_name=s[5:s.index(';')].replace('/','.')
+        import time;
+        img_name+=str(time.time())+img_name
+        image_result = open(img_name, 'wb')
         final_image = image_result.write(image_data)
         print(final_image)
     return modelPhoto.pk   
@@ -321,13 +348,19 @@ def process_insuree(args):
     insuree_create = {
         "last_name" : insuree_save.get("LastName", None),
         "other_names" : insuree_save.get("OtherNames", None),
-        # "gender_id": insuree_save.get("Gender", 1),
-        #"martial": insuree_save.get("Martial", None),
-        #"chf_id" : insuree_save.get("CHFID", None),
-        "dob" : dob,
-        "head" : True, #insuree_save.get("IsHead", False),
-        #"passport" : insuree_save.get("passport", None),
-        "validity_from" : "2020-01-01",
+        "dob" : insuree_save.get("DOB"),
+        "gender_id" : insuree_save.get("Gender"),
+        "marital" : insuree_save.get("Marital"),
+        "head": insuree_save.get("IsHead") if insuree_save.get('IsHead') else False,
+        "passport" : insuree_save.get("passport", 0),
+        "phone":insuree_save.get("Phone"),
+        "email" : insuree_save.get("Email"),
+        "relationship_id": insuree_save.get("Relationship"),
+        "education_id": insuree_save.get("Education"),
+        "current_address": insuree_save.get("CurrentAddress"),
+        "current_village": fbis64(insuree_save.get("VillId")), #base64
+        "profession_id" : insuree_save.get("Profession"),
+        # "validity_from" : "2020-01-01",
         "card_issued" : False,
         "audit_user_id": 1,
         'photo_id': photo_id,
@@ -359,7 +392,6 @@ class CreateInsureeMutation(graphene.Mutation):
     @classmethod
     def mutate(self, info, cls, **kwargs):
         dfprint('CreateInsureeMutation mutate')
-
         try:
             pk = kwargs['id']  # access Arguments
             temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
@@ -371,13 +403,16 @@ class CreateInsureeMutation(graphene.Mutation):
                 for insuree_save in insurees_from_form:
                     photo_id = process_photo({'insuree_save': insuree_save})
                     insuree_id = process_insuree({'insuree_save': insuree_save, 'photo_id': photo_id, 'family_id': family_id})
-                    insuree_models.Photo.objects.filter(pk=photo_id).update(**{"insuree_id": insuree_id})
+                    mdlInsureePhoto().objects.filter(pk=photo_id).update(**{"insuree_id": insuree_id})
                     chfif_assign = ChfidTempInsuree.objects.filter(is_approved=False).first()
                     if not chfif_assign:
                         message = "CHFID hal aba sakyo"
-                    chfif_assign.is_approved = True
-                    chfif_assign.save()
-                    insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
+                    else:
+                        chfif_assign.is_approved = True
+                        # chfif_assign.save()
+                        insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
+                        temp_insuree.is_approved = True
+                        temp_insuree.save()
         except Exception as e:
             print(e)
             import traceback
