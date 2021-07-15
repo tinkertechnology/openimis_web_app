@@ -83,6 +83,13 @@ class Profile(models.Model):
 class InsureeTempReg(models.Model):
     json = models.TextField()
     is_approved = models.BooleanField(default=False)
+    name_of_head = models.CharField(max_length=100, null=True, blank=True)
+    card_id = models.CharField(max_length=100, blank=True, null=True)
+    phone_number = models.CharField(max_length=100, null=True, blank=True)
+    is_approved = models.BooleanField(default=False, blank=True)
+    is_hold = models.BooleanField(default=False, blank=True)
+    is_rejected = models.BooleanField(default=False, blank=True)
+    status_message = models.CharField(max_length=500, blank=True, null=True)
     created_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
     updated_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
 

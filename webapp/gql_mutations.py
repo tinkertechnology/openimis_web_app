@@ -248,7 +248,7 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
         dfprint(str_json)
 
         #InsureeTempReg.objects.create(json=kwargs['json']) #json with single quote save, maybe decoded by JSONString()
-        InsureeTempReg.objects.create(json=str_json)
+        InsureeTempReg.objects.create(json=str_json, card_id=str_json.get('passport'), phone_no=str_json.get("Phone"), name_of_head=str_json.get("OtherNames")+' '+str_json.get("LastName"))
 
         return CreateTempRegInsureeMutation(ok=True)
 
