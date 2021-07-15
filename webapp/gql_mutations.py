@@ -187,20 +187,7 @@ class CreateNoticeMutation(OpenIMISMutation):#graphene.relay.ClientIDMutation):
         return CreateNoticeMutation(notice=notice)
 
 
-# class UpdateNoticeMutation(graphene.Mutation):
-#     class Arguments:
-#         id = graphene.Int(required=True)
-#         title = graphene.String(required=False,)
-#         description = graphene.String(required=False)
-#     notice = graphene.Field(NoticeType)
-    
-#     def mutate(self, info,cls, **input):
-#         try:
-#             notice = Notice.objects.filter(pk=kwargs['id']).first()
-#             notice.update(title=kwargs['title'], description=kwargs['description'])
-#             return UpdateNoticeMutation(notice=notice)
-#         except:
-#             return GraphQLError('The notice you are updating might not exist anymore')
+
 
 class UpdateNoticeMutation(OpenIMISMutation):
     notice = graphene.Field(NoticeType)
@@ -249,100 +236,154 @@ import base64
 from insuree.schema import  InsureeGQLType
 class CreateTempRegInsureeMutation(graphene.Mutation):
     class Arguments:
-        jeson = graphene.JSONString()
+        json = graphene.JSONString()
     ok = graphene.Boolean()
     @classmethod
     def mutate(self, info, cls, **kwargs):
-        print(kwargs)
-        InsureeTempReg.objects.create(json=kwargs['jeson'])
+        dfprint(kwargs)
+        inp_json=kwargs['json']
+        str_json=json.dumps(inp_json) #stringify json to save
+        dfprint(str_json)
+
+        #InsureeTempReg.objects.create(json=kwargs['json']) #json with single quote save, maybe decoded by JSONString()
+        InsureeTempReg.objects.create(json=str_json)
+
         return CreateTempRegInsureeMutation(ok=True)
 
 import json
 
+def dbg_tmp_insuree_json():
+    return { 
+        "ExistingInsuree": { "CHFID": "200" },
+        "Family": { "LocationId": "", "Poverty": False, "FamilyType": "", "FamilyAddress": "", "isOffline": "", "Ethnicity": "", "ConfirmationNo": "", "ConfirmationType": "" }, 
+        "Insurees": [ { "LastName": "", "OtherNames": "", "DOB": "2020-01-01", "Gender": "", "Marital": "", "IsHead": "", "passport": "", "Phone": "", "LegacyID": "", "Relationship": "", "Profession": "", "Education": "", "Email": "", "CurrentAddress": "" } ] 
+    }
+def dbg_tmp_insuree_photo():
+    #16x16 jpg img
+    return "9j/4AAQSkZJRgABAQEAYABgAAD/4QA4RXhpZgAATU0AKgAAAAgAAgESAAMAAAABAAEAAAExAAIAAAAKAAAAJgAAAABHcmVlbnNob3QA/9sAQwACAQECAQECAgICAgICAgMFAwMDAwMGBAQDBQcGBwcHBgcHCAkLCQgICggHBwoNCgoLDAwMDAcJDg8NDA4LDAwM/9sAQwECAgIDAwMGAwMGDAgHCAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM/8AAEQgAEAAQAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A8V/Zu+B/is663xY8P29veab4b8XTX1xcXSmSz0S4tdQDpLPDkPJG22EP5SyfI+CAwGL37Vf7Efibw3bR6vJ4U0/wq2tztc2NjaTXOpRFPKaWRBctJIwbgYVgS245YBGaqn7GH/BRyT4VQeO/hX4k8drofh29stfXQNQN1aRyeFdQd55cr5sTs0c0g2GMEMGk3LgncNv/AIKAf8FI9H+Mn7Pfww0yx8YaXd+KbaC8tfFBtdUS4t726ZYI2vngAWFZZRHMVdUKhJWCnJOPn8zzzNIRVDCtWtyWabum7q+trRbvom079z6zJ45ZzcuNh5tp2ei2Xdvb/I//2Q=="
+
+def process_family(args):    
+    json_dict = args.get('json_dict')
+    family_save = json_dict.get("Family")
+
+    chfid = None
+    family_id=None
+    if json_dict.get("ExistingInsuree"):
+        chfid = json_dict.get('ExistingInsuree').get('CHFID')
+        family = insuree_models.Insuree.objects.filter(chf_id=chfid).first()
+        if family:
+            family_id = family.family.id            
+    if not family_id:
+        insuree_ = insuree_models.Insuree.objects.all().first()
+        family_create = {
+            "head_insuree_id" : 1,
+            #"location" : ""
+            #"family_type_id": None,
+            #"address": ,
+            #"ethnicity" : "noob",
+            "validity_from" : "2020-01-01",
+            "audit_user_id" : 1,
+
+        }
+        family_create["head_insuree_id"] = insuree_.id
+        family =insuree_models.Family.objects.create(**family_create)
+        family_id = family.id
+    return family_id
+
+def process_photo(args):
+    insuree_save=args.get('insuree_save')
+    photo=insuree_save.get('B64Photo') # dbg_tmp_insuree_photo()
+    print( dir(insuree_models) )
+    modelPhoto = insuree_models.Photo.objects.create(**{
+        #"insuree_id":insuree_save.get('InsureeId'),
+        "folder": 'jpt',
+        "filename": 'jpt.jpg',
+        "officer_id":3, #todo
+        "date": '2018-03-28', #todo
+        "validity_from": "2018-03-28",
+    })
+    if photo and False:
+        save_path="/Users/abc"
+        img = photo.split(',')[1]
+        image_data = base64.b64decode(img)
+
+        image_result = open('deer_decode.jpg', 'wb')
+        final_image = image_result.write(image_data)
+        print(final_image)
+    return modelPhoto.pk   
+
+def process_insuree(args):
+    insuree_save=args.get('insuree_save')
+    family_id=args.get('family_id')
+    dob=insuree_save.get("DOB",)
+    dob=dob if len(dob)==10 else "2022-02-02" #todo fix
+    photo_id = args.get('photo_id')
+    insuree_create = {
+        "last_name" : insuree_save.get("LastName", None),
+        "other_names" : insuree_save.get("OtherNames", None),
+        # "gender_id": insuree_save.get("Gender", 1),
+        #"martial": insuree_save.get("Martial", None),
+        #"chf_id" : insuree_save.get("CHFID", None),
+        "dob" : dob,
+        "head" : True, #insuree_save.get("IsHead", False),
+        #"passport" : insuree_save.get("passport", None),
+        "validity_from" : "2020-01-01",
+        "card_issued" : False,
+        "audit_user_id": 1,
+        'photo_id': photo_id,
+        # "audit_user_id" : 1,
+    }                    
+    insuree_create["family_id"] = family_id
+    dfprint(insuree_create)
+    modelInsuree = insuree_models.Insuree.objects.create(**insuree_create)
+    return modelInsuree.pk
+    pass
+
+"""
+mutation {
+  createInsureeMutationFromTemp(id:"7"){
+      ok
+  }
+}
+
+SELECT TOP 10 * FROM tblInsuree ORDER BY insureeId DESC;
+SELECT TOP 10 * FROM tblPhotos ORDER BY PhotoId DESC;
+sp_help tblPhotos
+"""
+from .models import ChfidTempInsuree
 class CreateInsureeMutation(graphene.Mutation):
     class Arguments:
         id = graphene.String()
     ok = graphene.Boolean()
+    message = graphene.String()
     @classmethod
     def mutate(self, info, cls, **kwargs):
-        photo = "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"
-        temp_insuree = InsureeTempReg.objects.filter(pk=3).first()
-        str_json = temp_insuree.json
-        json_dict = json.loads(str_json)
-        json_dict = { "ExistingInsuree": 
-                { "CHFID": "200" }, "Family": { "LocationId": "", "Poverty": False, "FamilyType": "", "FamilyAddress": "", "isOffline": "", "Ethnicity": "", "ConfirmationNo": "", "ConfirmationType": "" }, "Insurees": [ { "LastName": "", "OtherNames": "", "DOB": "2020-01-01", "Gender": "", "Marital": "", "IsHead": "", "passport": "", "Phone": "", "LegacyID": "", "Relationship": "", "Profession": "", "Education": "", "Email": "", "CurrentAddress": "" } ] }
-        family_save = json_dict.get("Family")
-        insuree_save = json_dict.get("Insuree")
+        dfprint('CreateInsureeMutation mutate')
 
         try:
-            # insuree_create["family_id"] = family.id
-            #insuree = insuree_models.Insuree.objects.create(**insuree_create)
-            print("saueko")
-            # return CreateInsureeMutation(ok=True)
-            chfid = None
-            if json_dict.get("ExistingInsuree"):
-                chfid = json_dict.get('ExistingInsuree').get('CHFID')
-            if chfid:
-                family_id = insuree_models.Insuree.objects.filter(chf_id=chfid).first().family.id
-            else:
-                insuree_ = insuree_models.Insuree.objects.all().first()
-                family_create = {
-                    "head_insuree_id" : 1,
-                    #"location" : ""
-                    #"family_type_id": None,
-                    #"address": ,
-                    #"ethnicity" : "noob",
-                    "validity_from" : "2020-01-01",
-                    "audit_user_id" : 1,
-
-                }
-                family_create["head_insuree_id"] = insuree_.id
-                family =insuree_models.Family.objects.create(**family_create)
-                family_id = family.id
+            pk = kwargs['id']  # access Arguments
+            temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
+            str_json = temp_insuree.json
+            json_dict = json.loads(str_json)  # dbg_tmp_insuree_json()
+            family_id=process_family({'json_dict': json_dict})
             if family_id:
                 insurees_from_form = json_dict.get("Insurees")
                 for insuree_save in insurees_from_form:
-                    insuree_create = {
-                        "last_name" : insuree_save.get("LastName", None),
-                        "other_names" : insuree_save.get("OtherNames", None),
-                    # "gender_id": insuree_save.get("Gender", 1),
-                        #"martial": insuree_save.get("Martial", None),
-                        #"chf_id" : insuree_save.get("CHFID", None),
-                        "dob" : insuree_save.get("DOB", "2000-01-01"),
-                        "head" : True, #insuree_save.get("IsHead", False),
-                        #"passport" : insuree_save.get("passport", None),
-                        "validity_from" : "2020-01-01",
-                        "card_issued" : False,
-                        "audit_user_id": 1,
-                    # "audit_user_id" : 1,
-
-                    }
-                    
-                    insuree_create["family_id"] = family_id
-                    insuree_models.Insuree.objects.create(**insuree_create)
-                    save_path="/Users/abc"
-                    image_data = base64.b64decode(photo) 
-
-                    image_result = open('deer_decode.jpg', 'wb')
-
-                    final_image = image_result.write(image_data)
-                    print(final_image)
-
-
-
-            # print(insuree_create)
-            # insuree = insuree_models.Insuree.objects.create(**insuree_create)
+                    photo_id = process_photo({'insuree_save': insuree_save})
+                    insuree_id = process_insuree({'insuree_save': insuree_save, 'photo_id': photo_id, 'family_id': family_id})
+                    insuree_models.Photo.objects.filter(pk=photo_id).update(**{"insuree_id": insuree_id})
+                    chfif_assign = ChfidTempInsuree.objects.filter(is_approved=False).first()
+                    if not chfif_assign:
+                        message = "CHFID hal aba sakyo"
+                    chfif_assign.is_approved = True
+                    chfif_assign.save()
+                    insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
         except Exception as e:
-            print("jpob")
             print(e)
             import traceback
             traceback.print_exc()
-            raise
-
-
-
-
-        # insuree.save()
+            return CreateInsureeMutation(ok=False, message=message)
+            #raise
         return CreateInsureeMutation(ok=True)
 
 

@@ -87,6 +87,15 @@ class InsureeTempReg(models.Model):
     updated_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
 
 
+class ChfidTempInsuree(models.Model):
+    chfid = models.CharField(max_length=100)
+    is_approved = models.BooleanField(default=False)
+    created_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
+    updated_at = models.DateTimeField(verbose_name='date added', null=True, auto_now_add=True)
+
+    def __str__(self):
+        return self.chfid
+
 # class FamilyTable(models.Model):
 #     """
 #     When there is a policy renewal in progress, there might also be a need to update the picture or something else.
@@ -104,27 +113,27 @@ class InsureeTempReg(models.Model):
 
 import core
 
-class InsureePic(models.Model):
-    id = models.AutoField(db_column='PhotoID', primary_key=True)
-    uuid = models.CharField(db_column='PhotoUUID',
-                            max_length=36, default=uuid.uuid4, unique=True)
+# class InsureePic(models.Model):
+#     id = models.AutoField(db_column='PhotoID', primary_key=True)
+#     uuid = models.CharField(db_column='PhotoUUID',
+#                             max_length=36, default=uuid.uuid4, unique=True)
 
-    insuree = models.ForeignKey(insuree_models.Insuree, on_delete=models.DO_NOTHING,
-                                db_column='InsureeID', blank=True, null=True, related_name="photos")
-    chf_id = models.CharField(
-        db_column='CHFID', max_length=12, blank=True, null=True)
-    folder = models.CharField(db_column='PhotoFolder', max_length=255, blank=True, null=True)
-    filename = models.CharField(
-        db_column='PhotoFileName', max_length=250, blank=True, null=True)
-    # Support of BinaryField is database-related: prefer to stick to b64-encoded
-    photo = models.TextField(blank=True, null=True)
-    # No FK in database (so value may not be an existing officer.id !)
-    officer_id = models.IntegerField(db_column='OfficerID')
-    date = core.fields.DateField(db_column='PhotoDate')
-    audit_user_id = models.IntegerField(
-        db_column='AuditUserID', blank=True, null=True)
-    # rowid = models.TextField(db_column='RowID', blank=True, null=True)
+#     insuree = models.ForeignKey(insuree_models.Insuree, on_delete=models.DO_NOTHING,
+#                                 db_column='InsureeID', blank=True, null=True, related_name="photos")
+#     chf_id = models.CharField(
+#         db_column='CHFID', max_length=12, blank=True, null=True)
+#     folder = models.CharField(db_column='PhotoFolder', max_length=255, blank=True, null=True)
+#     filename = models.CharField(
+#         db_column='PhotoFileName', max_length=250, blank=True, null=True)
+#     # Support of BinaryField is database-related: prefer to stick to b64-encoded
+#     photo = models.TextField(blank=True, null=True)
+#     # No FK in database (so value may not be an existing officer.id !)
+#     officer_id = models.IntegerField(db_column='OfficerID')
+#     date = core.fields.DateField(db_column='PhotoDate')
+#     audit_user_id = models.IntegerField(
+#         db_column='AuditUserID', blank=True, null=True)
+#     # rowid = models.TextField(db_column='RowID', blank=True, null=True)
 
-    class Meta:
-        managed = False
-        db_table = 'tblPhotos'
+#     class Meta:
+#         managed = False
+#         db_table = 'tblPhotos'
