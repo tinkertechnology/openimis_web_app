@@ -374,7 +374,7 @@
                 "LegacyID": "",
                 //"AuditUserID": "",
                 //"RowID": "",
-                "Relationship": {val:"", req:1},
+                "Relationship": {val:"", req:0},
                 "Profession": "",
                 "Education": "",
                 "Email": "",
@@ -478,7 +478,7 @@
                 var valid=true;
                 var Insurees=this.Model.Insurees;
                 for (var i = 0; i < Insurees.length; i++) {
-                	if(this.validateInsuree(Insurees[i])){
+                	if(!this.validateInsuree(Insurees[i])){
                 		return false;
                 	}
                 }
