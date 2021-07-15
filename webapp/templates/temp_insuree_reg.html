@@ -102,21 +102,21 @@
                                 <template v-if="index==0">
                                     <div class="col-md-3 col-sm-6">
                                         <label for="region" class="form-label">Region</label>
-                                        <select v-model="Insuree.RegionId" @change="e=>getDistrict(Insuree)" class="form-select">
+                                        <select v-model="Insuree.RegionId" @change="e=>changeRegion(Insuree)" class="form-select">
                                             <option v-for="(item,index) in Selects.Regions" :value="item.id">[[item.name]]</option>
                                         </select>
                                     </div>
 
                                     <div class="col-md-3 col-sm-6">
                                         <label for="district" class="form-label">District</label>
-                                        <select v-model="Insuree.DistrictId" @change="e=>getMun(Insuree)" class="form-select">
+                                        <select v-model="Insuree.DistrictId" @change="e=>changeDistrict(Insuree)" class="form-select">
                                             <option v-for="(item,index) in Insuree.SelectDistricts" :value="item.id">[[item.name]]</option>
                                         </select>
                                     </div>
 
                                     <div class="col-md-3 col-sm-6">
                                         <label for="municipality" class="form-label">Municipality</label>
-                                        <select v-model="Insuree.MunId" @change="e=>getVill(Insuree)" class="form-select">
+                                        <select v-model="Insuree.MunId" @change="e=>changeMun(Insuree)" class="form-select">
                                             <option v-for="(item,index) in Insuree.SelectMuns" :value="item.id">[[item.name]]</option>
                                         </select>
                                     </div>
@@ -125,6 +125,13 @@
                                         <label for="village" class="form-label">Village</label>
                                         <select v-model="Insuree.VillId" class="form-select">
                                             <option v-for="(item,index) in Insuree.SelectVillages" :value="item.id">[[item.name]]</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-md-3 col-sm-6">
+                                        <label for="village" class="form-label">HealthFacility</label>
+                                        <select v-model="Insuree.HFID" class="form-select">
+                                            <option v-for="(item,index) in Insuree.SelectHealthFacility" :value="item.id">[[item.name]]</option>
                                         </select>
                                     </div>
                                 </template>
@@ -291,10 +298,11 @@
         </div>        
     </div>  
 
-
-    <div class="container">
-        <p>[[ Selects ]]</p>
-        <p>[[ Model ]]</p>
+                
+    <input type='checkbox' v-model="Debug">
+    <div class="container" v-if="Debug==1">
+        <pre>[[ Selects ]]
+        [[ Model ]]</pre>
     </div>
 </div>
 
@@ -303,6 +311,7 @@
         el: '#jpt',
         delimiters: ['[[', ']]'],
         data: {
+        	Debug:0,
             a : parseInt(Math.random() * 10),
             b : parseInt(Math.random()*10),
             c : 0,
@@ -456,7 +465,7 @@
             			}
             		}
             	}
-            	return false;
+            	return true;
             },
             calulateAmount(){
                 if(this.Model.Insurees.length <=5){
@@ -488,22 +497,30 @@
             	return OrgInsuree;
 
             },
+            HeadInsureeCopy(){
+            	if(this.Model.Insurees.length > 0){
+	            	if(this.Model.Insurees.length==1){ //IsHead selected for first insuree
+	                    this.Model.Insurees[0].IsHead=1;
+	                }
+	                else {
+	                    var lastInsuree=null; //this.Model.Insurees[this.Model.Insurees.length-1];
+	                    var firstInsuree =this.Model.Insurees[0];
+	                    for(var i=1; i<this.Model.Insurees.length; i++){ //assign head fields to all sub insuree
+	                    	lastInsuree=this.Model.Insurees[i];
+		                    lastInsuree.MunId = firstInsuree.MunId;
+		                    lastInsuree.RegionId = firstInsuree.RegionId;
+		                    lastInsuree.DistrictId = firstInsuree.DistrictId;
+		                    lastInsuree.VillId = firstInsuree.VillId;
+		                    lastInsuree.HFID = firstInsuree.HFID;
+		                }
+	                }
+	            }
+            },
             GuiNewInsuree(){
                 this.Model.Insurees.push(
                     JSON.parse(JSON.stringify(this.GetOrgInsuree()))
                 );
-                if(this.Model.Insurees.length==1){ //IsHead selected for first insuree
-                    this.Model.Insurees[0].IsHead=1;
-                }
-                else {
-                    var lastInsuree=this.Model.Insurees[this.Model.Insurees.length-1];
-                    var firstInsuree =this.Model.Insurees[0];
-                    lastInsuree.MunId = firstInsuree.MunId;
-                    lastInsuree.RegionId = firstInsuree.RegionId;
-                    lastInsuree.DistrictId = firstInsuree.DistrictId;
-                    lastInsuree.VillId = firstInsuree.VillId;
-                }
-                
+                this.HeadInsureeCopy();                
             },
             GetInsureeTempDetails(id){
                 var thisRef = this;
@@ -529,7 +546,6 @@
                 }); //end ajax
             },
             generateCaptch(){
-
                 this.a = parseInt(Math.random() * 10);
                 this.b = parseInt(Math.random() * 10);
             },
@@ -538,7 +554,7 @@
             	if(!this.Validate()){
             		return
             	}
-                if(this.c!=this.a+this.b){
+                if(this.c!=(this.a+this.b)){
                     this.generateCaptch();
                     alert("Cpatch Wrong!!");
                     return;
@@ -589,6 +605,54 @@
                     }
                 }); //end ajax
             },
+            getHealthFacility(args){
+                var reqUrl = this.getUrl("/api/graphql");
+                var location_Id=args.location_Id ? args.location_Id:'';
+                $.ajax({
+                    url: reqUrl,
+                    type: 'POST',
+                    data:  JSON.stringify({
+                        query: `
+                        query{
+                            #TG9jYXRpb25HUUxUeXBlOjE5
+                            healthFacilities(location_Id:"${location_Id}"){                            
+                                edges{
+                                    node{
+                                        id,
+                                        name,
+                                        careType,
+                                        code,
+                                        location{
+                                            id,
+                                            name,
+                                            type
+                                        }
+                                    }
+                                }
+                            }
+                        }`
+                    }),
+                    dataType: 'json',
+                    contentType: 'application/json; charset=utf-8',
+                    success: function (response) {
+                        console.log(response);
+                        if(args.pRef){
+                            var edges=response.data.healthFacilities.edges;
+                            var options=[];
+                            var node={};
+                            for(var i=0; i<edges.length; i++){
+                                node=edges[i].node;
+                                options.push({'id': node['id'], 'name': node['name']});
+                            }
+                            Vue.set(
+                                args.pRef, //parent Ref
+                                args.cstr,  //childStr
+                                options
+                            );
+                        }
+                    }
+                }); //end ajax 
+            },
             getLocation(args){
                 var reqUrl = this.getUrl("/api/graphql"); //"http://oi.tinker.com.np/api/graphql";
                 var id=args.id ? args.id : '';
@@ -635,16 +699,25 @@
             getRegions(){
                 console.log('getRegions');
                 this.getLocation({'id':'', 'type':'R', 'pRef': this.Selects, 'cstr': 'Regions'});
+                this.HeadInsureeCopy();
             },
-            getDistrict(Insuree){
+            changeRegion(Insuree){
                 console.log(Insuree);
+                Insuree.DistrictId="";
                 this.getLocation({'parent_Id':Insuree.RegionId, 'pRef': Insuree, 'cstr': 'SelectDistricts'});
+                this.HeadInsureeCopy();
             },
-            getMun(Insuree){
+            changeDistrict(Insuree){
+            	Insuree.MunId="";
+            	Insuree.HFID="";
                 this.getLocation({'parent_Id':Insuree.DistrictId, 'pRef': Insuree, 'cstr': 'SelectMuns'});
+                this.getHealthFacility({'location_Id':Insuree.DistrictId, 'pRef': Insuree, 'cstr': 'SelectHealthFacility'});
+                this.HeadInsureeCopy();
             },
-            getVill(Insuree){
+            changeMun(Insuree){
+            	Insuree.VillId="";
                 this.getLocation({'parent_Id':Insuree.MunId, 'pRef': Insuree, 'cstr': 'SelectVillages'});
+                this.HeadInsureeCopy();
             },
             readURL(evInput, index, Insuree, vModel){
                 console.log('readURL');
