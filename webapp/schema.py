@@ -1,4 +1,3 @@
-from typing_extensions import Required
 import django
 import uuid
 import graphene
@@ -295,7 +294,7 @@ class Query(graphene.ObjectType):
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate = graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(),
                                                inputLongitude=graphene.Decimal())
-    validate_insuree = graphene.Field(TemporaryRegGQLType, card_id=graphene.String(Required=False), phone_number=graphene.String())
+    #validate_insuree = graphene.Field(TemporaryRegGQLType, card_id=graphene.String(Required=False), phone_number=graphene.String())
 
     def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob, **kwargs):
         auth = False
