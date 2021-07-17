@@ -243,16 +243,18 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
     def mutate(self, info, cls, **kwargs):
         dfprint(kwargs)
         inp_json=kwargs['json']
-        str_json=json.dumps(inp_json) #stringify json to save
+        str_json=json.dumps(inp_json) #stringify json to save imp_json.get("Isurees"]
         dfprint(str_json)
-        print('passport', inp_json.get("passport"))
+        jantu = inp_json.get("Insurees")[0]
+        print('jantu',jantu)
+        # print('passport', inp_json.get("passport"))
         
 
-        #InsureeTempReg.objects.create(json=kwargs['json']) #json with single quote save, maybe decoded by JSONString()
-        create = InsureeTempReg.objects.create(json=str_json)#, name_of_head=str_json.get("OtherNames")+' '+str_json.get("LastName"))
-        json_dict = json.dumps(create.json)
-        create.phone_number = json_dict.get("Phone")
-        create.name_of_head = json_dict.get("OtherNames")+' '+json_dict.get("LastName")
+        InsureeTempReg.objects.create(json=kwargs['json'], name_of_head=jantu.get("OtherNames") +' '+jantu.get("LastName"), phone_number=jantu.get("Phone"),) #json with single quote save, maybe decoded by JSONString()
+        # create = InsureeTempReg.objects.create(json=str_json)#, name_of_head=str_json.get("OtherNames")+' '+str_json.get("LastName"))
+        # json_dict = json.dumps(create.json)
+        # create.phone_number = json_dict.get("Phone")
+        # create.name_of_head = json_dict.get("OtherNames")+' '+json_dict.get("LastName")
         
 
         return CreateTempRegInsureeMutation(ok=True)
