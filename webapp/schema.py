@@ -1,6 +1,8 @@
-from typing_extensions import Required
+
 import django
 import uuid
+
+from django.db.models.fields import BooleanField
 import graphene
 from datetime import timedelta, date
 
@@ -295,7 +297,10 @@ class Query(graphene.ObjectType):
     insuree_policy = graphene.Field(PolicyType, insureeCHFID=graphene.String())
     health_facility_coordinate = graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(),
                                                inputLongitude=graphene.Decimal())
-    validate_insuree = graphene.Field(TemporaryRegGQLType, card_id=graphene.String(Required=False), phone_number=graphene.String())
+    validate_insuree = graphene.Field(TemporaryRegGQLType, phone_number=graphene.String())
+
+    track_registration_status = graphene.Field(TemporaryRegGQLType, phone_no = graphene.String())
+
 
     def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob, **kwargs):
         auth = False
@@ -383,11 +388,14 @@ class Query(graphene.ObjectType):
         return get_qs_nearby_hfcoord(inputLatitude, inputLongitude, None)
         pass
 
-    def resolve_validate_insuree(self, info, phone_no, card_id):
-        if InsureeTempReg.objects.filter(Q(phone_number=phone_no | Q(card_id=card_id))):
-            return None
-        else: 
-            return True
+    def resolve_validate_insuree(self, info, phone_number):
+        jot = InsureeTempReg.objects.filter(phone_number=phone_number).first() #(Q(phone_no=phone_number | Q(card_id=card_id))):
+        return jot
+    
+    def resolve_track_registration_status(self, info, phone_no):
+        print('asdasd',phone_no)
+        reg_status = InsureeTempReg.objects.filter(phone_number=phone_no.strip()).first()
+        return reg_status
         
 
 class Mutation(graphene.ObjectType):

@@ -96,7 +96,6 @@ class CreateOrUpdateProfileMutation(graphene.Mutation):
         print(insuree_obj.pk)
         instance = Profile.objects.filter(insuree_id=insuree_obj.pk).first()
         if not instance:
-            print("1111")
             instance = Profile()
         instance.photo =  files.get('file')  if files.get('file') else instance.photo
         instance.email = email if email else instance.email
@@ -246,9 +245,15 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
         inp_json=kwargs['json']
         str_json=json.dumps(inp_json) #stringify json to save
         dfprint(str_json)
+        print('passport', inp_json.get("passport"))
+        
 
         #InsureeTempReg.objects.create(json=kwargs['json']) #json with single quote save, maybe decoded by JSONString()
-        InsureeTempReg.objects.create(json=str_json, card_id=str_json.get('passport'), phone_no=str_json.get("Phone"), name_of_head=str_json.get("OtherNames")+' '+str_json.get("LastName"))
+        create = InsureeTempReg.objects.create(json=str_json)#, name_of_head=str_json.get("OtherNames")+' '+str_json.get("LastName"))
+        json_dict = json.dumps(create.json)
+        create.phone_number = json_dict.get("Phone")
+        create.name_of_head = json_dict.get("OtherNames")+' '+json_dict.get("LastName")
+        
 
         return CreateTempRegInsureeMutation(ok=True)
 
@@ -406,7 +411,7 @@ class CreateInsureeMutation(graphene.Mutation):
                     mdlInsureePhoto().objects.filter(pk=photo_id).update(**{"insuree_id": insuree_id})
                     chfif_assign = ChfidTempInsuree.objects.filter(is_approved=False).first()
                     if not chfif_assign:
-                        message = "CHFID hal aba sakyo"
+                        message = "No CHFID available in database"
                     else:
                         chfif_assign.is_approved = True
                         # chfif_assign.save()
