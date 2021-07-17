@@ -256,10 +256,9 @@ class TemporaryRegGQLType(DjangoObjectType):
         fields = "__all__" #["id", "json", "created_at", "updated_at", "is_approved"]
         filter_fields = {
             "id" : ["exact"],
-            "is_approved" : ["exact"]
-
+            "is_approved" : ["exact"],
+            "phone_number":["exact"]
         }
-
         connection_class = ExtendedConnection
 
 
