@@ -45,6 +45,7 @@
             </div>
         </div>
 
+
         <div class="hawa" v-if="hawa==1">
             <div class="row" style="text-align: center;">
                 <div class="col-md-4">
@@ -118,6 +119,13 @@
         </div>
 
         <div class="akash row" v-if="akash==1">
+            <div>
+                Status:
+                <div v-if="ModelStatus.isApproved">Approved</div><div v-else>Not Approved</div>
+                <div v-if="ModelStatus.isHold">isHold</div>
+                <div v-if="ModelStatus.isRejected">isRejected</div>
+                <div v-if="ModelStatus.statusMessage">[[ModelStatus.statusMessage]]</div>
+            </div>
 
 
 
@@ -457,7 +465,7 @@
 
             <button type="button" class="btn btn-primary" @click="GuiSubmit" v-if="!IsApproveAllowed()">Submit</button>
             <button type="button" class="btn btn-success" @click="GuiApprove" v-if="IsApproveAllowed()">Approve</button> 
-
+            <button type="button" class="btn btn-danger" @click="e=>{hawa=1; akash=0;}">Cancel</button> 
 
         </div>        
     </div>  
@@ -465,8 +473,11 @@
                 
     <input type='checkbox' v-model="Debug">
     <div class="container" v-if="Debug==1">
-        <pre>[[ Selects ]]
-        [[ Model ]]</pre>
+        <pre>
+        [[ModelStatus]]
+        [[ Selects ]]
+        [[ Model ]]
+        </pre>
     </div>
 </div>
 
@@ -558,6 +569,9 @@
             },
             "Id":0,
             "decodeId":"",
+            ModelStatus:{
+
+            },
             Model: {
                 "ExistingInsuree":{},
                 "Family": {},
@@ -700,19 +714,28 @@
                     type: 'POST',
                     data:  JSON.stringify({
                         query: `{
-                            #tempreg(id: "${id}", phone_number: "${phone_number}"){
-                            tempreg(id: "${id}"){
-                                #id: VGVtcG9yYXJ5UmVnR1FMVHlwZToxMDE1
-                                json
+                            #id: VGVtcG9yYXJ5UmVnR1FMVHlwZToxMDE1
+                            tempregs(id: "${id}", phoneNumber: "${phone_number}"){
+                                edges {
+                                    node {
+                                        json,
+                                        isApproved,
+                                        isHold,
+                                        isRejected,
+                                        statusMessage
+                                    }
+                                }
                             }
                         }`
-                }),//strData,
+                    }),//strData,
                     dataType: 'json',
                     contentType: 'application/json; charset=utf-8',
                     success: function (response) {
                         //console.log(response);
-                    var json_data = JSON.parse(response.data.tempreg.json);
-                    Vue.set(thisRef, "Model", json_data);
+                        //var json_data = JSON.parse(response.data.tempreg.json); //tempreg api
+                        var json_data = response.data.tempregs.edges[0].node;
+                        Vue.set(thisRef, "ModelStatus", json_data);
+                        Vue.set(thisRef, "Model", JSON.parse(json_data.json));
                     }
                 }); //end ajax
             },
