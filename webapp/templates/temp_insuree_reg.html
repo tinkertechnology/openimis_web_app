@@ -587,10 +587,14 @@
 
             var id=this.getUrlParameter('id');
             if(id){
+                this.hawa=0;
+                this.akash=1;
                 this.GetInsureeTempDetails({'id':id});
             }
             var decodeId=this.getUrlParameter('decodeId');
             if(decodeId){
+                this.hawa=0;
+                this.akash=1;
                 this.decodeId=decodeId;
             }
         },
