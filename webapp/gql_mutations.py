@@ -241,12 +241,12 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
     ok = graphene.Boolean()
     @classmethod
     def mutate(self, info, cls, **kwargs):
-        dfprint(kwargs)
+        # dfprint(kwargs)
         inp_json=kwargs['json']
         str_json=json.dumps(inp_json) #stringify json to save imp_json.get("Isurees"]
-        dfprint(str_json)
+        # dfprint(str_json)
         jantu = inp_json.get("Insurees")[0]
-        print('jantu',jantu)
+        print('jantu',inp_json)
         # print('passport', inp_json.get("passport"))
         
 
