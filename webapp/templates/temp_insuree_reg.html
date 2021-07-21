@@ -11,6 +11,15 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.0/jquery.js" integrity="sha256-r/AaFHrszJtwpe+tHyNi/XCfMxYpbsRg2Uqn0x3s2zc=" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue-loading-overlay@3"></script>
+    <link href="https://cdn.jsdelivr.net/npm/vue-loading-overlay@3/dist/vue-loading.css" rel="stylesheet">
+    
+    <script src="https://unpkg.com/vue-toasted"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vue-toasted/1.1.28/vue-toasted.min.css" integrity="sha512-P9tgFEUBcyvFHEXSRGLQB/SvGxnMfJCZGy4SBp+JIFgs1BSoYfUkadkZri9Rwkeh8Vg0lGo72X99o31wetRGCw==" crossorigin="anonymous" />
+
+    <script src="https://cdn.jsdelivr.net/npm/vue-toast-notification"></script>
+    <link href="https://cdn.jsdelivr.net/npm/vue-toast-notification/dist/theme-default.css" rel="stylesheet">
+
 
 <style type="text/css">
     .btn-primary {
@@ -18,6 +27,12 @@
         background-color: #473cb3;
         border-color: #473cb3;
     }
+    .your-custom-class {
+            background-color: #59b460 !important; 
+            }
+            .v-select .dropdown-menu {
+  display:block;
+}
 </style>
 </head>
 
@@ -120,11 +135,11 @@
 
         <div class="akash row" v-if="akash==1">
             <div>
-                Status:
-                <div v-if="ModelStatus.isApproved">Approved</div><div v-else>Not Approved</div>
-                <div v-if="ModelStatus.isHold">isHold</div>
-                <div v-if="ModelStatus.isRejected">isRejected</div>
-                <div v-if="ModelStatus.statusMessage">[[ModelStatus.statusMessage]]</div>
+                <h2>Your Application Status: </h2>
+                <div v-if="ModelStatus.isApproved" class="alert alert-success">Approved</div><div v-else>Not Approved</div>
+                <div v-if="ModelStatus.isHold" class="alert alert-warning">isHold</div>
+                <div v-if="ModelStatus.isRejected" class="alert alert-danger">isRejected</div>
+                <div v-if="ModelStatus.statusMessage" class="alert alert-primary"><b>Reason:</b> [[ModelStatus.statusMessage]]</div>
             </div>
 
 
@@ -376,7 +391,7 @@
                                 <!-- /.Family Details -->
                             </div>
 
-                            <button type="button" class="btn btn-primary" @click="GuiNewInsuree">Add new family member</button>
+                            <button type="button" class="btn btn-primary" @click="GuiNewInsuree" v-if="!IsApproveAllowed()">Add new family member</button>
                         </div>
                     </div>
 
@@ -462,10 +477,43 @@
                 </div>
             </div>
             <!-- /.Family Member Card -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-check">
+                        <input type="checkbox" v-model="app_submit.is_hold"  name="status" v-bind:value="true" id="flexCheckDefault">
+                        <label class="form-check-label" for="flexCheckDefault">
+                          keep in Hold [[app_submit.is_hold]]
+                        </label>
+                      </div>
+                      <div class="form-check">
+                        <input  type="checkbox" v-model="app_submit.is_rejected" v-bind:value="true" name="status" id="flexCheckChecked">
+                        <label class="form-check-label" for="flexCheckChecked">
+                          Reject application [[app_submit.is_rejected]]
+                        </label> 
+                      </div>
+
+                      <div class="form-check">
+                        <input  type="checkbox" v-model="app_submit.is_approved" v-bind:value="true"  name="status"id="flexCheckChecked">
+                        <label class="form-check-label" for="flexCheckChecked">
+                          approve application [[app_submit.is_approved]]
+                        </label> 
+                      </div>
+
+
+                      <div class="form-control">
+                        <input class="form-control" type="text" v-model="app_submit.status_message" value="" id="flexCheckChecked">
+                       
+                          Remarks [[app_submit.status_message]]
+                       
+                      </div>
+                </div>
+            </div>
+
 
             <button type="button" class="btn btn-primary" @click="GuiSubmit" v-if="!IsApproveAllowed()">Submit</button>
             <button type="button" class="btn btn-success" @click="GuiApprove" v-if="IsApproveAllowed()">Approve</button> 
-            <button type="button" class="btn btn-danger" @click="e=>{hawa=1; akash=0;}">Cancel</button> 
+            <button type="button" class="btn btn-danger" @click="e=>{hawa=1; akash=0;}">Cancel</button>
+            
 
         </div>        
     </div>  
@@ -482,6 +530,27 @@
 </div>
 
 <script>
+    Vue.use(VueLoading);
+    // Vue.use(Toasted);
+    // Vue.use(VueToast);
+    // Window.prototype.$ToastSuccess = function (thisRef, msg) { 
+    //             thisRef.$toasted.show(msg, { 
+    //                             theme: "toasted-primary", 
+    //                             position: "top-right", 
+    //                             duration : 1500,
+    //                             className: ['your-custom-class',]
+    //                     });
+                
+    //          }
+
+    Vue.component('loading', VueLoading);
+    Window.prototype.$ShowLoading = function(thisRef){
+            let loader = thisRef.$loading.show({
+                loader: 'dots'
+            });
+            return loader;
+
+        }
     new Vue({
         el: '#jpt',
         delimiters: ['[[', ']]'],
@@ -490,6 +559,13 @@
             pani:0,
             akash:0, 
         	Debug:0,
+            app_submit : {
+                is_approved : false,
+                is_hold: false,
+                is_rejected : false,
+                status_message: ""
+            },
+
             a : parseInt(Math.random() * 10),
             b : parseInt(Math.random()*10),
             c : 0,
@@ -597,11 +673,19 @@
                 this.akash=1;
                 this.decodeId=decodeId;
             }
+
+
         },
         mounted() {
             //for dbg
             window.submits=this.GuiSubmit;
             this.generateCaptch();
+            if(this.app_submit.is_hold){
+                this.app_submit.is_rejected = false;
+            }
+            if(this.app_submit.is_rejected){
+                this.app_submit.is_hold = false;
+            }
         },
         methods: {
             getUrlParameter(sParam) {
@@ -756,6 +840,7 @@
                     alert("Cpatch Wrong!!");
                     return;
                 }
+                let loader = $ShowLoading(this);
                 var sendData = this.Model;
                 var reqUrl = this.getUrl("/api/graphql");
                 var strData = JSON.stringify( sendData ); // JSON.stringify( {"bla":"5"} );
@@ -766,7 +851,7 @@
                     data:  JSON.stringify({
                         query: `
                             mutation {
-                                createTemporaryInsuree(json:${JSON.stringify(strData)}){
+                                createTemporaryInsuree(json:${JSON.stringify(strData) }){
                                     ok
                                 }
                             }`
@@ -774,6 +859,8 @@
                     dataType: 'json',
                     contentType: 'application/json; charset=utf-8',
                     success: function (response) {
+                        loader.hide();
+                        // $ToastSuccess(this, 'Created New Bill');  
                         console.log(response);
                     }
                 }); //end ajax                 
@@ -783,6 +870,18 @@
                 if(!id){
                     alert('no id');
                 }
+                if(!this.app_submit.is_rejected){
+                    this.app_submit.is_rejected=false;
+                }
+                
+                if(!this.app_submit.is_hold){
+                    this.app_submit.is_hold=false;
+                }
+                
+                if(!this.app_submit.is_approved){
+                    this.app_submit.is_approved=false;
+                }
+                
                 var reqUrl = this.getUrl("/api/graphql");
                 $.ajax({
                     url: reqUrl,
@@ -790,7 +889,11 @@
                     data:  JSON.stringify({
                         query: `
                             mutation {
-                                createInsureeMutationFromTemp(id:"${id}"){
+                                createInsureeMutationFromTemp(id:"${id}", 
+                                        isHold: ${this.app_submit.is_hold}, 
+                                        isRejected: ${this.app_submit.is_rejected},
+                                        isApproved : ${this.app_submit.is_approved},
+                                        statusMessage: "${this.app_submit.status_message}"){
                                     ok
                                     message
                                 }
