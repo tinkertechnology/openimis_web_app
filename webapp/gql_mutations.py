@@ -244,7 +244,6 @@ from insuree.schema import InsureeGQLType
 class CreateTempRegInsureeMutation(graphene.Mutation):
     class Arguments:
         json = graphene.JSONString()
-
     ok = graphene.Boolean()
 
     @classmethod
@@ -254,18 +253,11 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
         str_json = json.dumps(inp_json)  # stringify json to save imp_json.get("Isurees"]
         dfprint(str_json)
         jantu = inp_json.get("Insurees")[0]
-        # print('jantu',jantu)
-        # print('passport', inp_json.get("passport"))
 
         obj = InsureeTempReg.objects.create(json=str_json)
         obj.name_of_head=jantu.get("OtherNames") + ' ' + jantu.get("LastName"),
         obj.phone_number=jantu.get("Phone")
         obj.save()
-                                       # json with single quote save, maybe decoded by JSONString()
-        # create = InsureeTempReg.objects.create(json=str_json)#, name_of_head=str_json.get("OtherNames")+' '+str_json.get("LastName"))
-        # json_dict = json.dumps(create.json)
-        # create.phone_number = json_dict.get("Phone")
-        # create.name_of_head = json_dict.get("OtherNames")+' '+json_dict.get("LastName")
 
         return CreateTempRegInsureeMutation(ok=True)
 
@@ -338,16 +330,9 @@ def process_photo(args):
     photo = insuree_save.get('B64Photo')  # dbg_tmp_insuree_photo()
     # print( insuree_models.__dict__ )
 
-    modelPhoto = mdlInsureePhoto().objects.create(**{
-        # "insuree_id":insuree_save.get('InsureeId'),
-        "folder": 'jpt',
-        "filename": 'jpt.jpg',
-        "officer_id": 3,  # todo
-        "date": '2018-03-28',  # todo
-        "validity_from": "2018-03-28",
-    })
-    if photo:  # and False:
-        save_path = "/Users/abc"
+    save_path="" ;import pdb; pdb.set_trace();
+    img_name=""
+    if photo:  # and False:        
         cfg = Config.objects.filter(key='InsureeImageDir').first()
         if cfg:
             save_path = cfg.value
@@ -357,10 +342,21 @@ def process_photo(args):
         s = img_type  # 'data:image/jpeg;base64'
         img_name = s[5:s.index(';')].replace('/', '.')
         import time;
-        img_name += str(time.time()) + img_name
-        image_result = open(img_name, 'wb')
+        img_name = str(time.time()) + img_name
+        import os 
+        img_fullpath=os.path.join(save_path, img_name)
+        image_result = open(img_fullpath, 'wb')
         final_image = image_result.write(image_data)
         print(final_image)
+    
+    modelPhoto = mdlInsureePhoto().objects.create(**{
+        # "insuree_id":insuree_save.get('InsureeId'),
+        "folder": save_path,
+        "filename": img_name,
+        "officer_id": 3,  # todo
+        "date": '2018-03-28',  # todo
+        "validity_from": "2018-03-28",
+    })
     return modelPhoto.pk
 
 
@@ -383,7 +379,7 @@ def process_insuree(args):
         "relationship_id": insuree_save.get("Relationship"),
         "education_id": insuree_save.get("Education"),
         "current_address": insuree_save.get("CurrentAddress"),
-        "current_village": fbis64(insuree_save.get("VillId")),  # base64
+        "current_village_id": fbis64(insuree_save.get("VillId")),  # base64
         "profession_id": insuree_save.get("Profession"),
         # "validity_from" : "2020-01-01",
         "card_issued": False,
@@ -426,9 +422,9 @@ class CreateInsureeMutation(graphene.Mutation):
     @classmethod
     def mutate(self, info, cls, **kwargs):
         dfprint('CreateInsureeMutation mutate')
-        message = ""
+        message = "" ;import pdb; pdb.set_trace();
         try:
-            pk = kwargs['id']  # access Arguments
+            pk = kwargs['id']  # access Arguments #13 testing
             temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
             print('kwargs----------',kwargs)
             if kwargs.get('is_hold'):
@@ -444,9 +440,7 @@ class CreateInsureeMutation(graphene.Mutation):
                 temp_insuree.status_message = kwargs.get('status_message')
                 temp_insuree.save()
             if kwargs.get("is_approved"):
-                temp_insuree.is_approved = True
-                temp_insuree.status_message = kwargs.get('statusMessage')
-                temp_insuree.save()
+                
                 str_json = temp_insuree.json
                 json_dict = json.loads(str_json)  # dbg_tmp_insuree_json()
                 family_id = process_family({'json_dict': json_dict})
@@ -466,6 +460,11 @@ class CreateInsureeMutation(graphene.Mutation):
                             insuree_models.Insuree.objects.filter(pk=insuree_id).update(**{"chf_id": chfif_assign.chfid})
                             temp_insuree.is_approved = True
                             temp_insuree.save()
+
+                    # everything ok, then approved flag changed
+                    temp_insuree.is_approved = True
+                    temp_insuree.status_message = kwargs.get('statusMessage')
+                    temp_insuree.save()
         except Exception as e:
             print(e)
             import traceback
