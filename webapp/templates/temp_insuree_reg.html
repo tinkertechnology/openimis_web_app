@@ -61,7 +61,7 @@
         </div>
 
 
-        <div class="hawa" v-if="hawa==1">
+        <div class="displayInitial" v-if="displayInitial==1">
             <div class="row" style="text-align: center;">
                 <div class="col-md-4">
                     <div class="card">
@@ -69,7 +69,7 @@
                             Online Registration
                         </div>
                         <div class="card-body">
-                            Click <a href="#" @click="e=>{ hawa=0; akash=1; }">here</a> for online registration.
+                            Click <a href="#" @click="e=>{ displayInitial=0; displayForm=1; }">here</a> for online registration.
                         </div>
                     </div>
                 </div>
@@ -80,7 +80,7 @@
                             Track
                         </div>
                         <div class="card-body">
-                            Click <a href="#" @click="e=>{ hawa=0; pani=1; }">here</a> for tracking your registration status.
+                            Click <a href="#" @click="e=>{ displayInitial=0; displayTracking=1; }">here</a> for tracking your registration status.
                         </div>
                     </div>
                 </div>
@@ -118,7 +118,7 @@
             </div> 
         </div>
 
-        <div class="pani" v-if="pani==1">
+        <div class="displayTracking" v-if="displayTracking==1">
                 <div class="row">
                         <h4 class="mt-4" style="text-align:center;">Track your Registration Status</h4>
                         <center>
@@ -127,18 +127,18 @@
                                 <input type="text" class="form-control" name="mobile_number" v-model="phone_number" placeholder="Enter your mobile number">
                             </div>
             
-                            <button type="Submit" class="btn btn-primary my-2" @click="e=>{pani=0; akash=1; GetInsureeTempDetails({phone_number: phone_number})}">Submit</button>
-                            <button type="Submit" class="btn btn-danger my-2" @click="e=>{hawa=1; pani=0;}">Cancel</button>
+                            <button type="Submit" class="btn btn-primary my-2" @click="e=>{displayTracking=0; displayForm=1; GetInsureeTempDetails({phone_number: phone_number})}">Submit</button>
+                            <button type="Submit" class="btn btn-danger my-2" @click="e=>{displayInitial=1; displayTracking=0;}">Cancel</button>
                         </center>
                     </div> 
         </div>
 
-        <div class="akash row" v-if="akash==1">
+        <div class="displayForm row" v-if="displayForm==1">
             <div>
-                <h2>Your Application Status: </h2>
-                <div v-if="ModelStatus.isApproved" class="alert alert-success">Approved</div><div v-else>Not Approved</div>
-                <div v-if="ModelStatus.isHold" class="alert alert-warning">isHold</div>
-                <div v-if="ModelStatus.isRejected" class="alert alert-danger">isRejected</div>
+                <h2> Application Status </h2>
+                <div v-if="ModelStatus.isApproved" class="alert alert-success">Approved</div><div v-else class="alert alert-success">Not Approved</div>
+                <div v-if="ModelStatus.isHold" class="alert alert-warning"> Your application isHold</div>
+                <div v-if="ModelStatus.isRejected" class="alert alert-danger">Your application isRejected</div>
                 <div v-if="ModelStatus.statusMessage" class="alert alert-primary"><b>Reason:</b> [[ModelStatus.statusMessage]]</div>
             </div>
 
@@ -477,7 +477,7 @@
                 </div>
             </div>
             <!-- /.Family Member Card -->
-            <div class="row">
+            <div class="row" v-if="IsApproveAllowed()">
                 <div class="col-md-12">
                     <div class="form-check">
                         <input type="checkbox" v-model="app_submit.is_hold"  name="status" v-bind:value="true" id="flexCheckDefault">
@@ -510,9 +510,14 @@
             </div>
 
 
-            <button type="button" class="btn btn-primary" @click="GuiSubmit" v-if="!IsApproveAllowed()">Submit</button>
-            <button type="button" class="btn btn-success" @click="GuiApprove" v-if="IsApproveAllowed()">Approve</button> 
-            <button type="button" class="btn btn-danger" @click="e=>{hawa=1; akash=0;}">Cancel</button>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <button type="button" class="btn btn-primary" @click="GuiSubmit" v-if="!IsApproveAllowed()">Submit</button>
+                    <button type="button" class="btn btn-success" @click="GuiApprove" v-if="IsApproveAllowed()">Approve</button> 
+                    <button type="button" class="btn btn-danger" @click="e=>{displayInitial=1; displayForm=0;}">Cancel</button>
+                </div>
+            </div>
             
 
         </div>        
@@ -555,9 +560,9 @@
         el: '#jpt',
         delimiters: ['[[', ']]'],
         data: {
-            hawa:1,
-            pani:0,
-            akash:0, 
+            displayInitial:1,
+            displayTracking:0,
+            displayForm:0, 
         	Debug:0,
             app_submit : {
                 is_approved : false,
@@ -663,14 +668,14 @@
 
             var id=this.getUrlParameter('id');
             if(id){
-                this.hawa=0;
-                this.akash=1;
+                this.displayInitial=0;
+                this.displayForm=1;
                 this.GetInsureeTempDetails({'id':id});
             }
             var decodeId=this.getUrlParameter('decodeId');
             if(decodeId){
-                this.hawa=0;
-                this.akash=1;
+                this.displayInitial=0;
+                this.displayForm=1;
                 this.decodeId=decodeId;
             }
 
