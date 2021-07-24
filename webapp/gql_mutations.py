@@ -323,19 +323,12 @@ def process_family(args):
         family_id = family.id
     return family_id
 
-
-def process_photo(args):
-    dfprint('process_photo')
-    insuree_save = args.get('insuree_save')
-    photo = insuree_save.get('B64Photo')  # dbg_tmp_insuree_photo()
-    # print( insuree_models.__dict__ )
-
-    save_path="" ;import pdb; pdb.set_trace();
+def process_b64photo_write(args):
+    dfprint('process_b64photo_write')
+    photo = args.get('b64photo')
+    save_path=args.get('save_path')
     img_name=""
-    if photo:  # and False:        
-        cfg = Config.objects.filter(key='InsureeImageDir').first()
-        if cfg:
-            save_path = cfg.value
+    if photo:
         img_type, img = photo.split(',')
         image_data = base64.b64decode(img)
 
@@ -344,10 +337,26 @@ def process_photo(args):
         import time;
         img_name = str(time.time()) + img_name
         import os 
+        os.makedirs(save_path, exist_ok=True)
         img_fullpath=os.path.join(save_path, img_name)
         image_result = open(img_fullpath, 'wb')
         final_image = image_result.write(image_data)
-        print(final_image)
+    return img_name
+
+def process_photo(args):
+    dfprint('process_photo')
+    insuree_save = args.get('insuree_save')
+    photo = insuree_save.get('B64Photo')  # dbg_tmp_insuree_photo()
+    # print( insuree_models.__dict__ )
+
+    save_path=""
+    img_name=""
+    if photo:  # and False:        
+        cfg = Config.objects.filter(key='InsureeImageDir').first()
+        if cfg:
+            save_path = cfg.value
+        img_name=process_b64photo_write({"b64photo": photo, "save_path":save_path})
+
     
     modelPhoto = mdlInsureePhoto().objects.create(**{
         # "insuree_id":insuree_save.get('InsureeId'),
@@ -357,6 +366,10 @@ def process_photo(args):
         "date": '2018-03-28',  # todo
         "validity_from": "2018-03-28",
     })
+
+    cfg = Config.objects.filter(key='IdImageDir').first()
+    process_b64photo_write({"b64photo":  insuree_save.get('B64IdPhoto'), "save_path":cfg.value})
+
     return modelPhoto.pk
 
 
@@ -422,7 +435,7 @@ class CreateInsureeMutation(graphene.Mutation):
     @classmethod
     def mutate(self, info, cls, **kwargs):
         dfprint('CreateInsureeMutation mutate')
-        message = "" ;import pdb; pdb.set_trace();
+        message = ""
         try:
             pk = kwargs['id']  # access Arguments #13 testing
             temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
@@ -444,6 +457,10 @@ class CreateInsureeMutation(graphene.Mutation):
                 str_json = temp_insuree.json
                 json_dict = json.loads(str_json)  # dbg_tmp_insuree_json()
                 family_id = process_family({'json_dict': json_dict})
+                
+                cfg = Config.objects.filter(key='RegVoucherImageDir').first()
+                process_b64photo_write({"b64photo": json_dict.get('B64VoucherPhoto'), "save_path":cfg.value})
+
                 if family_id:
                     insurees_from_form = json_dict.get("Insurees")
                     for insuree_save in insurees_from_form:
