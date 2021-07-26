@@ -261,7 +261,7 @@
                                                     
                                                     <div class="col-md-2">
                                                         <label for="dob" class="form-label">Date of Birth</label>
-                                                        <input type="text" class="form-control" id="dob" placeholder="dob" v-model="Insuree.DOB">
+                                                        <input type="text" class="form-control" id="dob" placeholder="YYYY-MM-DD" v-model="Insuree.DOB">
                                                     </div>
                                                     
                                                     <div class="col-md-1" v-if="false">
@@ -618,7 +618,17 @@
                 //"CHFID": "",
                 "LastName": {val:"", req:1},
                 "OtherNames": "",
-                "DOB": {val:"", req:1},
+                "DOB": {
+                	val:"", req:1, 
+                	fnVal: function(arg){ 
+                		var valid=true;
+                		if(arg.length<10){
+                			alert('dob 10 digits required');
+                			val=false;
+                		}
+                		return valid;
+                	}
+            	},
                 "Gender": {val:"", req:1},
                 "Marital": "",
                 "IsHead": "",
@@ -646,7 +656,10 @@
                 //"Geolocation": "",
                 //"CurrentVillage": ""    
 
-                "RegionId":"",             
+                "RegionId":"",  
+                "B64Photo":{val:"", req: 1},
+                "B64IdPhoto":{val:"", req: 1},
+                "B64VoucherPhoto":{val:"", req: 1},
             },
             "Id":0,
             "decodeId":"",
@@ -735,6 +748,12 @@
             			if(req==1) {
             				if(Insuree[k] =="" || Insuree[k]==null){
             					alert(`Insuree ${k} required`);
+            					return false;
+            				}
+            			}
+            			var fnVal=curr['fnVal'];
+            			if(fnVal){
+            				if( !fnVal(Insuree[k] ) ){
             					return false;
             				}
             			}
