@@ -448,7 +448,8 @@
                                             <img :src="Model.B64VoucherPhoto" class="img-responsive" style="width:250px;">
                                         </div>
 
-                                        <div class="col-md-4">
+                                        <div class="col-md-4 font-weight-bold">
+                                        	<strong>
                                             <label class="form-label">Captcha</label>
                                             <div class="row">
                                                 <div class="col-md-1">
@@ -467,6 +468,7 @@
                                                     <input type="text" v-model="c" class="form-control">
                                                 </div>
                                             </div>
+                                        	</strong>
                                         </div>
                                     </div>
                                 </div>
@@ -658,8 +660,7 @@
 
                 "RegionId":"",  
                 "B64Photo":{val:"", req: 1},
-                "B64IdPhoto":{val:"", req: 1},
-                "B64VoucherPhoto":{val:"", req: 1},
+                "B64IdPhoto":{val:"", req: 1}
             },
             "Id":0,
             "decodeId":"",

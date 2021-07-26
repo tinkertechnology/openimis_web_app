@@ -253,11 +253,17 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
         str_json = json.dumps(inp_json)  # stringify json to save imp_json.get("Isurees"]
         dfprint(str_json)
         jantu = inp_json.get("Insurees")[0]
-
-        obj = InsureeTempReg.objects.create(json=str_json)
-        obj.name_of_head=jantu.get("OtherNames") + ' ' + jantu.get("LastName"),
-        obj.phone_number=jantu.get("Phone")
-        obj.save()
+        phone_number=jantu.get("Phone")
+        
+        tempReg=None
+        tempReg=InsureeTempReg.objects.filter(phone_number=phone_number).first()
+        if tempReg:
+            tempReg.json = str_json
+        else:
+            tempReg = InsureeTempReg.objects.create(json=str_json)
+        tempReg.name_of_head=jantu.get("OtherNames") + ' ' + jantu.get("LastName"),
+        tempReg.phone_number=phone_number
+        tempReg.save()
 
         return CreateTempRegInsureeMutation(ok=True)
 
