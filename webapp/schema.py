@@ -125,16 +125,6 @@ class ProfileGQLType(DjangoObjectType):
         remaining_days = (latest_policy.expiry_date - date.today()).days
         return remaining_days
 
-# class InsureeImageGQLType(DjangoObjectType):
-#     class Meta:
-#         model = insuree_models.InsureePhoto
-#         fields = ['id', 'photo']
-
-#     def resolve_photo(self, info):
-#         if self.image:
-#             self.image = info.context.build_absolute_uri(self.photo.url)
-#         return self.image
-
 
 class InsureeProfileGQLType(DjangoObjectType):
     class Meta:
@@ -176,7 +166,6 @@ class InsureeProfileGQLType(DjangoObjectType):
         remaining_days = (latest_policy.expiry_date - date.today()).days
         return remaining_days
 
-
 from .gql_mutations import FeedbackAppGQLType
 
 
@@ -192,7 +181,6 @@ class NoticeGQLType(DjangoObjectType):
         }
 
         connection_class = ExtendedConnection
-
 
 class VoucherPaymentGQLType(DjangoObjectType):
     # insuree_name = graphene.String()
@@ -219,9 +207,6 @@ class VoucherPaymentGQLType(DjangoObjectType):
     # def resolve_insuree_name(self, info):
     #     return self.insuree__name
 
-
-
-
 class HealthFacilityCoordinateGQLType(DjangoObjectType):
     distance = graphene.Float()
 
@@ -229,8 +214,6 @@ class HealthFacilityCoordinateGQLType(DjangoObjectType):
         model = HealthFacilityCoordinate
         interfaces = (graphene.relay.Node,)
         fields = '__all__'
-
-
 
 class NotificationGQLType(DjangoObjectType):
     class Meta:
@@ -260,12 +243,6 @@ class TemporaryRegGQLType(DjangoObjectType):
             "phone_number":["exact"]
         }
         connection_class = ExtendedConnection
-
-
-
-
-
-
 
 class Query(graphene.ObjectType):
     password = graphene.String()
@@ -315,7 +292,22 @@ class Query(graphene.ObjectType):
                 insuree_auth_obj.token = uuid.uuid4().hex[:6].upper() + str(
                     insuree_auth_obj.id)  # todo yeslai lamo banaune
             insuree_auth_obj.otp = uuid.uuid4().hex[:4]
-            print(insuree_auth_obj.otp)  # sms/email bata OTP pathaune
+            """  
+                # sms/email  OTP service
+                import requests
+
+                r = requests.get(
+                        "http://api.sparrowsms.com/v2/sms/",
+                        params={'token' : '<token-provided>',
+                            'from'  : '<Identity>',
+                            'to'    : '<comma_separated 10-digit mobile numbers>', #insuree mobile
+                            'text'  : f'{insuree_auth_obj.otp}'})
+
+                status_code = r.status_code
+                response = r.text
+                response_json = r.json()
+            """
+             
             insuree_auth_obj.save()
         if insuree_auth_obj:
             insuree_auth_obj.token = ''  # user lai login garda otp verify agadi token nadine
@@ -323,9 +315,8 @@ class Query(graphene.ObjectType):
 
     def resolve_insuree_policy(self, info, insureeCHFID):
         policy_obj = policy_models.Policy.filter()
-    def resolve_notifications(self, info, insureeCHFID, **kwargs):
-        print('chfid')
 
+    def resolve_notifications(self, info, insureeCHFID, **kwargs):
         return Notification.objects.filter(chf_id=insureeCHFID).order_by("-created_at")
 
     def resolve_insuree_claim(self, info, claimId):
@@ -339,10 +330,6 @@ class Query(graphene.ObjectType):
 
     def resolve_insuree_profile(self, info, insureeCHFID, **kwargs):
         return insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
-
-        # if insuree_obj:
-        #     return InsureeVerifyGQLType(insuree_obj)
-        # return ''
 
     def resolve_profile(self, info, insureeCHFID):
         profile = Profile.objects.filter(insuree__chf_id=insureeCHFID).first()
