@@ -2,4 +2,4 @@ from django.apps import AppConfig
 
 
 class MymoduleConfig(AppConfig):
-    name = 'mymodule'
+    name = 'self_registration'
