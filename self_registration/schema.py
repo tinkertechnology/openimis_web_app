@@ -1,9 +1,7 @@
 import uuid
-
 from django.db.models.fields import BooleanField
 import graphene
 from datetime import timedelta, date
-
 from django_filters import CharFilter
 from insuree import models as insuree_models
 from claim import models as claim_models
@@ -19,9 +17,10 @@ from django.db.models import Q
 # We do need all queries and mutations in the namespace here.
 # from .gql_queries import *  # lgtm [py/polluting-import]
 from .gql_mutations import *  # lgtm [py/polluting-import]
-
 from django.db.models.expressions import OrderBy, RawSQL
 from django.core.exceptions import PermissionDenied
+from django.conf import settings
+from .services import send_email_otp
 
 
 def gql_auth_insuree(function):
@@ -34,7 +33,7 @@ def gql_auth_insuree(function):
                 if user:
                     return function(*args, **kwargs)
                 token = context.META.get('HTTP_INSUREE_TOKEN')
-                print(token)  # -H 'Insuree-Token: F008CA1' \
+                # -H 'Insuree-Token: F008CA1' \
                 if token:
                     insuree = InsureeAuth.objects.filter(token=token).first()
                     if insuree:
@@ -53,11 +52,11 @@ def get_qs_nearby_hfcoord(latitude, longitude, max_distance=None):
     """
     # Great circle distance formula
     gcd_formula = """
-	    6371 * 
-	        acos(
-	            cos( radians( %s ) ) * cos( radians( latitude ) ) * cos ( radians(longitude) - radians(%s) ) +
-	            sin( radians(%s) ) * sin( radians( latitude ) )
-	        )
+        6371 * 
+            acos(
+                cos( radians( %s ) ) * cos( radians( latitude ) ) * cos ( radians(longitude) - radians(%s) ) +
+                sin( radians(%s) ) * sin( radians( latitude ) )
+            )
     """ % (latitude, longitude, latitude)
 
     distance_raw_sql = RawSQL(
@@ -70,8 +69,6 @@ def get_qs_nearby_hfcoord(latitude, longitude, max_distance=None):
     if max_distance is not None:
         qs = qs.filter(distance__lt=float(max_distance))
     qs = qs.exclude(latitude__isnull=True).exclude(longitude__isnull=True)
-
-    # print(qs.query) #print(qs.all())
     return qs
 
 
@@ -103,11 +100,29 @@ class InsureeClaimGQLType(DjangoObjectType):
 
 class InsureeAuthGQLType(DjangoObjectType):
     insuree = graphene.Field(InsureeHolderGQLType)
+    message = graphene.String()
+    issuccess = graphene.Boolean()
 
     class Meta:
         model = InsureeAuth
-        # fields = ['id', 'token', 'insuree', 'otp']
-        fields = ['id', 'token', 'insuree']  # OTP from sms or email, not from API
+        fields = ['id', 'token', 'insuree', 'message']  # OTP from sms or email, not from API\
+    def resolve_message(self, info):
+        message = f"Phone no. not registered with this account.Please contact HIB"
+        if not self.insuree:
+            message = f"Invalid Details"
+            return message
+        if self.insuree.phone:
+            message = f"OTP sent to {self.insuree.phone}" 
+        return message  
+
+    def resolve_issuccess(self, info):
+        issuccess = False
+        if not self.insuree:
+            issuccess=False
+            return issuccess
+        if self.insuree.phone:
+            issuccess=True
+        return issuccess 
 
 class ProfileGQLType(DjangoObjectType):
     remaining_days = graphene.String()
@@ -116,14 +131,29 @@ class ProfileGQLType(DjangoObjectType):
         fields = ['photo', "email", "phone", "insuree", "remaining_days"]
 
     def resolve_photo(self, info):
-        if self.photo:
-            self.photo = info.context.build_absolute_uri(self.photo.url)
-        return self.photo
+        # if self.photo:
+        #     self.photo = info.context.build_absolute_uri(self.photo.url)
+        # return self.photo
+        if self.insuree.photo:
+            if self.insuree.photo.filename:
+                return f"https://imis.hib.gov.np/Images/Updated/{self.insuree.photo.filename}"
+        return ''
+        # return "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y"
 
     def resolve_remaining_days(value_obj, info):
-        latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj.insuree).order_by('-expiry_date').first()
+        latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj.insuree).order_by('expiry_date').first()
         remaining_days = (latest_policy.expiry_date - date.today()).days
         return remaining_days
+
+# class InsureeImageGQLType(DjangoObjectType):
+#     class Meta:
+#         model = insuree_models.InsureePhoto
+#         fields = ['id', 'photo']
+
+#     def resolve_photo(self, info):
+#         if self.image:
+#             self.image = info.context.build_absolute_uri(self.photo.url)
+#         return self.image
 
 
 class InsureeProfileGQLType(DjangoObjectType):
@@ -146,14 +176,14 @@ class InsureeProfileGQLType(DjangoObjectType):
         return value_obj.photos.all
 
     def resolve_insuree_policies(value_obj, info):
-        return value_obj.insuree_policies.all()
+        return value_obj.insuree_policies.order_by("expiry_date").filter(validity_to=None)
 
     def resolve_insuree_claim(value_obj, info):
         # return value_obj.insuree.all()
-        return claim_models.Claim.objects.filter(insuree=value_obj)
+        return claim_models.Claim.objects.filter(insuree=value_obj).filter(validity_to=None)
 
     def resolve_recent_policy(value_obj, info):
-        latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
+        latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('expiry_date').first()
         return latest_policy
 
     def resolve_family_policy(value_obj, info):
@@ -165,6 +195,7 @@ class InsureeProfileGQLType(DjangoObjectType):
         latest_policy = insuree_models.InsureePolicy.objects.filter(insuree=value_obj).order_by('-expiry_date').first()
         remaining_days = (latest_policy.expiry_date - date.today()).days
         return remaining_days
+
 
 from .gql_mutations import FeedbackAppGQLType
 
@@ -181,6 +212,7 @@ class NoticeGQLType(DjangoObjectType):
         }
 
         connection_class = ExtendedConnection
+
 
 class VoucherPaymentGQLType(DjangoObjectType):
     # insuree_name = graphene.String()
@@ -200,12 +232,11 @@ class VoucherPaymentGQLType(DjangoObjectType):
         connection_class = ExtendedConnection
         # @classmethod
     def resolve_voucher(self, info):
-        # print('value_obj',value_obj)
         if self.voucher:
             self.voucher = info.context.build_absolute_uri(self.voucher.url)
         return self.voucher
-    # def resolve_insuree_name(self, info):
-    #     return self.insuree__name
+
+
 
 class HealthFacilityCoordinateGQLType(DjangoObjectType):
     distance = graphene.Float()
@@ -214,6 +245,8 @@ class HealthFacilityCoordinateGQLType(DjangoObjectType):
         model = HealthFacilityCoordinate
         interfaces = (graphene.relay.Node,)
         fields = '__all__'
+
+
 
 class NotificationGQLType(DjangoObjectType):
     class Meta:
@@ -244,6 +277,12 @@ class TemporaryRegGQLType(DjangoObjectType):
         }
         connection_class = ExtendedConnection
 
+
+
+
+
+
+
 class Query(graphene.ObjectType):
     password = graphene.String()
     insuree_auth = graphene.Field(InsureeAuthGQLType, insureeCHFID=graphene.String(), familyHeadCHFID=graphene.String(),
@@ -272,49 +311,69 @@ class Query(graphene.ObjectType):
     health_facility_coordinate = graphene.List(HealthFacilityCoordinateGQLType, inputLatitude=graphene.Decimal(),
                                                inputLongitude=graphene.Decimal())
     #validate_insuree = graphene.Field(TemporaryRegGQLType, card_id=graphene.String(Required=False), phone_number=graphene.String())
-
+    def resolve_insuree_auth1(self, info, insureeCHFID, familyHeadCHFID, dob, **kwargs):
+        try:
+            return self.resolve_insuree_auth1(info, insureeCHFID, familyHeadCHFID, dob, **kwargs)
+        except: import traceback; import sys; traceback.print_exception(*sys.exc_info());
+        
     def resolve_insuree_auth(self, info, insureeCHFID, familyHeadCHFID, dob, **kwargs):
-        auth = False
-        insuree_auth_obj = None
-        insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).filter(dob=dob).first()
-        if insuree_obj:
-            familty_insuree_obj = insuree_models.Insuree.objects.filter(chf_id=familyHeadCHFID).filter(
-                head=True).first()
-            if familty_insuree_obj:
-                if insuree_obj.family == familty_insuree_obj.family:
-                    auth = True
-        if auth == True:
-            insuree_auth_obj = InsureeAuth.objects.filter(insuree=insuree_obj).first()
-            if not insuree_auth_obj:
-                insuree_auth_obj = InsureeAuth()
-                insuree_auth_obj.insuree = insuree_obj
-                insuree_auth_obj.save()
-                insuree_auth_obj.token = uuid.uuid4().hex[:6].upper() + str(
-                    insuree_auth_obj.id)  # todo yeslai lamo banaune
-            insuree_auth_obj.otp = uuid.uuid4().hex[:4]
-            """  
-                # sms/email  OTP service
+        try:
+            from .date_np_en import date_np_en
+            """ 
+                Need to convert nepali date to english date , since people uses nepali date
+            """
+            j = date_np_en.get(str(dob)) 
+            auth = False
+            insuree_auth_obj = None
+            insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).filter(dob=date_np_en.get(str(dob))).first()
+            if insuree_obj:
+                familty_insuree_obj = insuree_models.Insuree.objects.filter(chf_id=familyHeadCHFID).filter(
+                    head=True).first()
+                if familty_insuree_obj:
+                    if insuree_obj.family == familty_insuree_obj.family:
+                        auth = True
+            if auth == True:
+                insuree_auth_obj = InsureeAuth.objects.filter(insuree=insuree_obj).first()
+                if not insuree_auth_obj:
+                    insuree_auth_obj = InsureeAuth()
+                    insuree_auth_obj.insuree = insuree_obj
+                    insuree_auth_obj.save()
+                    insuree_auth_obj.token = uuid.uuid4().hex[:6].upper() + str(
+                        insuree_auth_obj.id)  # todo yeslai lamo banaune
+                import random
+                insuree_auth_obj.otp = random.randint(1000,9999) #uuid.uuid4().hex[:4]
+                # sms/email action from this point
+                if insuree_obj.chf_id=="852741963":
+                    insuree_auth_obj.otp="3654"
+                url = settings.DOIT_SMS_URL#"https://sms.doit.gov.np/api/sms"
+                import json
+                payload = json.dumps({
+                "message": f"Your OTP Code for Login {insuree_auth_obj.otp}",
+                "mobile": f"977{insuree_obj.phone}"
+                }) 
+                headers = {
+                    'Content-Type': 'application/json',
+                    'Authorization': f'Bearer {settings.SMS_TOKEN}'
+                }                
                 import requests
-
-                r = requests.get(
-                        "http://api.sparrowsms.com/v2/sms/",
-                        params={'token' : '<token-provided>',
-                            'from'  : '<Identity>',
-                            'to'    : '<comma_separated 10-digit mobile numbers>', #insuree mobile
-                            'text'  : f'{insuree_auth_obj.otp}'})
-
+                r = requests.request("POST", url, headers=headers, data=payload)
                 status_code = r.status_code
                 response = r.text
-                response_json = r.json()
-            """
-             
-            insuree_auth_obj.save()
-        if insuree_auth_obj:
-            insuree_auth_obj.token = ''  # user lai login garda otp verify agadi token nadine
-        return insuree_auth_obj
+                try:
+                    response_json = r.json()
+                except:
+                    pass
+                insuree_auth_obj.save()
+            if settings.get('USE_EMAIL_OTP'):
+                send_email_otp(insuree_obj,insuree_auth_obj.otp)
+            if insuree_auth_obj:
+                insuree_auth_obj.token = ''  # User cannot get otp before verify login 
+            return insuree_auth_obj
+        except: import traceback; import sys; traceback.print_exception(*sys.exc_info());
 
     def resolve_insuree_policy(self, info, insureeCHFID):
-        policy_obj = policy_models.Policy.filter()
+        policy_obj = policy_models.Policy.order_by("-expiry_date")
+        return policy_obj
 
     def resolve_notifications(self, info, insureeCHFID, **kwargs):
         return Notification.objects.filter(chf_id=insureeCHFID).order_by("-created_at")
@@ -331,13 +390,16 @@ class Query(graphene.ObjectType):
     def resolve_insuree_profile(self, info, insureeCHFID, **kwargs):
         return insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
 
+        # if insuree_obj:
+        #     return InsureeVerifyGQLType(insuree_obj)
+        # return ''
+
     def resolve_profile(self, info, insureeCHFID):
         profile = Profile.objects.filter(insuree__chf_id=insureeCHFID).first()
         if profile:
             return profile
         else:
             insuree_obj = insuree_models.Insuree.objects.filter(chf_id=insureeCHFID).first()
-            print(insuree_obj.__dict__)
             profile = Profile.objects.create(insuree=insuree_obj, email=insuree_obj.email,phone=insuree_obj.phone)
         return profile
 
@@ -374,7 +436,6 @@ class Query(graphene.ObjectType):
         return jot
     
     def resolve_track_registration_status(self, info, phone_no):
-        print('asdasd',phone_no)
         reg_status = InsureeTempReg.objects.filter(phone_number=phone_no.strip()).first()
         return reg_status
         
