@@ -1,13 +1,22 @@
 import base64
 from django.core.files.base import ContentFile
-
 import graphene
 from core.schema import OpenIMISMutation
 from graphql import GraphQLError
-
+from .models import Notice, VoucherPayment, Feedback, Config
+from graphene_django import DjangoObjectType
+from graphene import Connection, Int
+from insuree import models as insuree_models
+from .models import Profile
+from .models import Notification
+from .models import InsureeTempReg
+import base64
+from .models import ChfidTempInsuree
+from insuree.schema import InsureeGQLType
+import json
+import core
 
 def dfprint(i):
-    print(i)
     pass
 
 
@@ -25,32 +34,6 @@ def fbis64(inp):
     dfprint([bstr, sstr, istr])
     return istr
 
-
-# from graphene import relay, ObjectType
-
-# from .apps import ClaimConfig
-# from claim.validations import validate_claim, get_claim_category, validate_assign_prod_to_claimitems_and_services, \
-#     process_dedrem, approved_amount
-# from core import filter_validity, assert_string_length
-# from core.schema import TinyInt, SmallInt, OpenIMISMutation
-# from core.gql.gql_mutations import mutation_on_uuids_from_filter
-# from django.conf import settings
-# from django.contrib.auth.models import AnonymousUser
-# from django.core.exceptions import ValidationError, PermissionDenied
-# from django.utils.translation import gettext as _
-# from graphene import InputObjectType
-# from location.schema import UserDistrict
-
-# from .gql_queries import ClaimGQLType
-# from .models import Claim, Feedback, ClaimDetail, ClaimItem, ClaimService, ClaimAttachment, ClaimDedRem
-# from product.models import ProductItemOrService
-
-# logger = logging.getLogger(__name__)
-from .models import Notice, VoucherPayment, Feedback, Config
-from graphene_django import DjangoObjectType
-from graphene import Connection, Int
-from insuree import models as insuree_models
-import core
 
 
 class ExtendedConnection(Connection):
@@ -74,7 +57,6 @@ class VoucherPaymentType(DjangoObjectType):
         fields = ['voucher']
 
 
-from .models import Profile
 
 
 class CreateOrUpdateProfileMutation(graphene.Mutation):
@@ -100,9 +82,6 @@ class CreateOrUpdateProfileMutation(graphene.Mutation):
         instance.phone = phone if phone else instance.phone
         instance.save()
         return CreateOrUpdateProfileMutation(ok=True)
-
-
-from .models import Notification
 
 
 class CreateVoucherPaymentMutation(graphene.Mutation):
@@ -233,12 +212,6 @@ class DeleteNoticeMutation(graphene.Mutation):
             return GraphQLError('The notice you are deleting might not exist anymore')
 
 
-from .models import InsureeTempReg
-import base64
-
-from insuree.schema import InsureeGQLType
-
-
 class CreateTempRegInsureeMutation(graphene.Mutation):
     class Arguments:
         json = graphene.JSONString()
@@ -266,7 +239,7 @@ class CreateTempRegInsureeMutation(graphene.Mutation):
         return CreateTempRegInsureeMutation(ok=True)
 
 
-import json
+
 
 
 def mdlInsureePhoto():
@@ -422,7 +395,6 @@ SELECT TOP 10 * FROM tblInsuree ORDER BY insureeId DESC;
 SELECT TOP 10 * FROM tblPhotos ORDER BY PhotoId DESC;
 sp_help tblPhotos
 """
-from .models import ChfidTempInsuree
 
 
 class CreateInsureeMutation(graphene.Mutation):
@@ -443,7 +415,6 @@ class CreateInsureeMutation(graphene.Mutation):
         try:
             pk = kwargs['id']  # access Arguments #13 testing
             temp_insuree = InsureeTempReg.objects.filter(pk=pk).first()
-            print('kwargs----------',kwargs)
             if kwargs.get('is_hold'):
                 temp_insuree.is_hold = True
                 temp_insuree.status_message = kwargs.get('status_message')
@@ -457,11 +428,9 @@ class CreateInsureeMutation(graphene.Mutation):
                 temp_insuree.status_message = kwargs.get('status_message')
                 temp_insuree.save()
             if kwargs.get("is_approved"):
-                
                 str_json = temp_insuree.json
                 json_dict = json.loads(str_json)  # dbg_tmp_insuree_json()
                 family_id = process_family({'json_dict': json_dict})
-                
                 cfg = Config.objects.filter(key='RegVoucherImageDir').first()
                 process_b64photo_write({"b64photo": json_dict.get('B64VoucherPhoto'), "save_path":cfg.value})
 
